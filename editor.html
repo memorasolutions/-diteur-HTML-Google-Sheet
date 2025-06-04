@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+    
+    .editor-wrapper {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      position: relative;
+    }
+    
+    .toolbar-container {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: white;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .tabs {
+      display: flex;
+      border-bottom: 2px solid #ddd;
+      background: white;
+      padding: 0 10px;
+    }
+    
+    .tab {
+      padding: 8px 16px;
+      cursor: pointer;
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-bottom: none;
+      margin-right: 5px;
+      margin-top: 5px;
+      transition: all 0.3s;
+    }
+    
+    .tab.active {
+      background: white;
+      border-bottom: 2px solid white;
+      margin-bottom: -2px;
+    }
+    
+    .toolbar {
+      display: flex;
+      gap: 5px;
+      padding: 5px 10px;
+      background: #f5f5f5;
+      border-bottom: 1px solid #ddd;
+      flex-wrap: wrap;
+      max-height: 80px;
+      overflow-y: auto;
+    }
+    
+    .toolbar button {
+      padding: 5px 10px;
+      border: 1px solid #ccc;
+      background: white;
+      cursor: pointer;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+    
+    .toolbar button:hover {
+      background: #f0f0f0;
+    }
+    
+    .toolbar .separator {
+      width: 1px;
+      background: #ccc;
+      margin: 0 5px;
+      align-self: stretch;
+    }
+    
+    .editor-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+    
+    .editor-container {
+      min-height: 300px;
+      border: 1px solid #ddd;
+      padding: 10px;
+      background: white;
+    }
+    
+    #visualEditor {
+      min-height: 280px;
+      outline: none;
+    }
+    
+    /* Styles pour les tableaux dans l'éditeur */
+    #visualEditor table {
+      border-collapse: collapse;
+      margin: 10px 0;
+    }
+    
+    #visualEditor table td,
+    #visualEditor table th {
+      min-width: 50px;
+      min-height: 20px;
+    }
+    
+    #htmlEditor, #markdownEditor {
+      width: 100%;
+      min-height: 280px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      border: none;
+      outline: none;
+      resize: vertical;
+    }
+    
+    .table-dialog {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border: 1px solid #ccc;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      z-index: 1000;
+    }
+    
+    .table-dialog input {
+      margin: 5px;
+      padding: 5px;
+      width: 60px;
+    }
+    
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.3);
+      z-index: 999;
+    }
+    
+    .actions {
+      position: sticky;
+      bottom: 0;
+      background: white;
+      padding: 15px 10px;
+      display: flex;
+      gap: 10px;
+      border-top: 1px solid #ddd;
+      box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
+      align-items: center;
+    }
+    
+    .save-format {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .save-format label {
+      font-size: 14px;
+    }
+    
+    .save-format select {
+      padding: 5px 10px;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      font-size: 14px;
+    }
+    
+    .btn {
+      padding: 8px 20px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      border-radius: 3px;
+    }
+    
+    .btn-primary {
+      background: #4285f4;
+      color: white;
+    }
+    
+    .btn-secondary {
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="loading" class="loading">Chargement...</div>
+  
+  <div id="editorApp" style="display: none;">
+    <div class="editor-wrapper">
+      <div class="toolbar-container">
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab('visual', event)">Visuel</div>
+          <div class="tab" onclick="switchTab('html', event)">Code</div>
+        </div>
+        
+        <div id="visualToolbar" class="toolbar">
+          <button onclick="formatText('bold')" title="Gras (Ctrl/Cmd+B)"><b>B</b></button>
+          <button onclick="formatText('italic')" title="Italique (Ctrl/Cmd+I)"><i>I</i></button>
+          <button onclick="formatText('underline')" title="Souligné (Ctrl/Cmd+U)"><u>U</u></button>
+          <div class="separator"></div>
+          <button onclick="formatText('formatBlock', 'h1')" title="Titre 1">H1</button>
+          <button onclick="formatText('formatBlock', 'h2')" title="Titre 2">H2</button>
+          <button onclick="formatText('formatBlock', 'h3')" title="Titre 3">H3</button>
+          <button onclick="formatText('formatBlock', 'p')" title="Paragraphe">P</button>
+          <div class="separator"></div>
+          <button onclick="formatText('insertUnorderedList')" title="Liste à puces">• Liste</button>
+          <button onclick="formatText('insertOrderedList')" title="Liste numérotée">1. Liste</button>
+          <div class="separator"></div>
+          <button onclick="formatText('createLink')" title="Insérer un lien">🔗 Lien</button>
+          <button onclick="formatText('unlink')" title="Supprimer le lien">⛓️‍💥 Délier</button>
+          <div class="separator"></div>
+          <button onclick="showTableDialog()" title="Insérer un tableau">📊 Tableau</button>
+          <button onclick="addTableRow()" title="Ajouter une ligne">➕ Ligne</button>
+          <button onclick="addTableColumn()" title="Ajouter une colonne">➕ Col</button>
+          <button onclick="deleteTableRow()" title="Supprimer la ligne">➖ Ligne</button>
+          <button onclick="deleteTableColumn()" title="Supprimer la colonne">➖ Col</button>
+          <button onclick="deleteTable()" title="Supprimer le tableau">🗑️</button>
+          <div class="separator"></div>
+          <button onclick="formatText('justifyLeft')" title="Aligner à gauche">⬅️</button>
+          <button onclick="formatText('justifyCenter')" title="Centrer">⬆️</button>
+          <button onclick="formatText('justifyRight')" title="Aligner à droite">➡️</button>
+          <div class="separator"></div>
+          <button onclick="undo()" title="Annuler (Ctrl/Cmd+Z)">↩️ Annuler</button>
+          <button onclick="redo()" title="Refaire (Ctrl/Cmd+Y)">↪️ Refaire</button>
+        </div>
+      </div>
+      
+      <div class="editor-content">
+        <div id="visualTab">
+          <div class="editor-container">
+            <div id="visualEditor" contenteditable="true"></div>
+          </div>
+        </div>
+        
+        <div id="htmlTab" style="display: none;">
+          <div class="editor-container">
+            <textarea id="htmlEditor"></textarea>
+          </div>
+        </div>
+      </div>
+      
+      <div class="actions">
+        <button class="btn btn-primary" onclick="saveContent()" title="Sauvegarder (Ctrl/Cmd+S)">Sauvegarder</button>
+        <button class="btn btn-secondary" onclick="if(confirm('Êtes-vous sûr de vouloir annuler tous les changements ?')) google.script.host.close()">Annuler</button>
+        <div class="save-format">
+          <label for="saveFormat">Format de sauvegarde :</label>
+          <select id="saveFormat">
+            <option value="html">HTML</option>
+            <option value="markdown">Markdown</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Boîte de dialogue pour créer un tableau -->
+  <div id="tableDialog" style="display: none;">
+    <div class="overlay" onclick="hideTableDialog()"></div>
+    <div class="table-dialog">
+      <h3>Créer un tableau</h3>
+      <label>Lignes: <input type="number" id="tableRows" value="3" min="1" max="20"></label><br>
+      <label>Colonnes: <input type="number" id="tableCols" value="3" min="1" max="10"></label><br>
+      <button class="btn btn-primary" onclick="insertTable()">Créer</button>
+      <button class="btn btn-secondary" onclick="hideTableDialog()">Annuler</button>
+    </div>
+  </div>
+  
+  <script>
+    let currentTab = 'visual';
+    let cellData = null;
+    let undoStack = [];
+    let redoStack = [];
+    let maxUndoSteps = 50;
+    let isExecutingCommand = false;
+    
+    // Initialisation
+    window.onload = function() {
+      google.script.run
+        .withSuccessHandler(loadContent)
+        .withFailureHandler(showError)
+        .getCellContent();
+        
+      // Ajouter les écouteurs pour undo/redo
+      document.addEventListener('keydown', handleKeyPress);
+    };
+    
+    function handleKeyPress(e) {
+      // Ctrl/Cmd + Z pour annuler
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      // Ctrl/Cmd + Y ou Ctrl/Cmd + Shift + Z pour refaire
+      else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        redo();
+      }
+      // Ctrl/Cmd + S pour sauvegarder
+      else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        saveContent();
+      }
+    }
+    
+    function saveState() {
+      if (isExecutingCommand) return;
+      
+      const content = document.getElementById('visualEditor').innerHTML;
+      
+      // Ne pas sauvegarder si c'est le même contenu que le dernier état
+      if (undoStack.length > 0 && undoStack[undoStack.length - 1] === content) {
+        return;
+      }
+      
+      undoStack.push(content);
+      
+      // Limiter la taille de la pile
+      if (undoStack.length > maxUndoSteps) {
+        undoStack.shift();
+      }
+      
+      // Vider la pile de redo car on a fait une nouvelle action
+      redoStack = [];
+    }
+    
+    function undo() {
+      if (undoStack.length > 1) {
+        isExecutingCommand = true;
+        
+        // Sauvegarder l'état actuel dans redo
+        const currentState = undoStack.pop();
+        redoStack.push(currentState);
+        
+        // Restaurer l'état précédent
+        const previousState = undoStack[undoStack.length - 1];
+        document.getElementById('visualEditor').innerHTML = previousState;
+        
+        // Synchroniser avec l'onglet Code
+        if (currentTab === 'visual') {
+          document.getElementById('htmlEditor').value = previousState;
+        }
+        
+        setTimeout(() => { isExecutingCommand = false; }, 100);
+      }
+    }
+    
+    function redo() {
+      if (redoStack.length > 0) {
+        isExecutingCommand = true;
+        
+        const stateToRestore = redoStack.pop();
+        undoStack.push(stateToRestore);
+        document.getElementById('visualEditor').innerHTML = stateToRestore;
+        
+        // Synchroniser avec l'onglet Code
+        if (currentTab === 'visual') {
+          document.getElementById('htmlEditor').value = stateToRestore;
+        }
+        
+        setTimeout(() => { isExecutingCommand = false; }, 100);
+      }
+    }
+    
+    function loadContent(data) {
+      cellData = data;
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('editorApp').style.display = 'block';
+      
+      // Détecter le format du contenu
+      const content = data.content || '';
+      let detectedFormat = 'html';
+      
+      // Vérifier si c'est du Markdown (pas de balises HTML ou très peu)
+      const htmlTagCount = (content.match(/<[^>]+>/g) || []).length;
+      const markdownIndicators = [
+        /^#{1,6}\s+/m,     // Titres
+        /\*\*[^*]+\*\*/,   // Gras
+        /\*[^*]+\*/,       // Italique
+        /\[[^\]]+\]\([^)]+\)/, // Liens
+        /^[-*]\s+/m,       // Listes
+        /^\d+\.\s+/m,      // Listes numérotées
+        /^\|.+\|$/m        // Tableaux Markdown
+      ];
+      
+      const hasMarkdownSyntax = markdownIndicators.some(regex => regex.test(content));
+      
+      // Détecter spécifiquement les tableaux Markdown
+      const hasMarkdownTable = /^\|(.+)\|\s*\n\s*\|((?:\s*:?-+:?\s*\|)+)\s*\n/m.test(content);
+      
+      if ((htmlTagCount < 3 && hasMarkdownSyntax) || hasMarkdownTable) {
+        detectedFormat = 'markdown';
+      }
+      
+      // Définir le format de sauvegarde par défaut selon le contenu détecté
+      document.getElementById('saveFormat').value = detectedFormat;
+      
+      // Charger le contenu dans les éditeurs
+      if (detectedFormat === 'markdown') {
+        // Si c'est du Markdown, le convertir en HTML pour l'éditeur visuel
+        const html = markdownToHtml(content);
+        document.getElementById('visualEditor').innerHTML = html;
+        document.getElementById('htmlEditor').value = html;
+      } else {
+        // Si c'est du HTML
+        document.getElementById('visualEditor').innerHTML = content;
+        document.getElementById('htmlEditor').value = content;
+      }
+      
+      // Sauvegarder l'état initial
+      setTimeout(() => saveState(), 100);
+      
+      // Ajouter les écouteurs d'événements
+      const visualEditor = document.getElementById('visualEditor');
+      
+      // Observer les changements
+      const observer = new MutationObserver(() => {
+        if (!isExecutingCommand) {
+          clearTimeout(window.saveStateTimeout);
+          window.saveStateTimeout = setTimeout(saveState, 300);
+        }
+      });
+      
+      observer.observe(visualEditor, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+        attributes: true
+      });
+      
+      // Focus sur l'éditeur pour que les raccourcis fonctionnent
+      visualEditor.focus();
+    }
+    
+    function showError(error) {
+      alert('Erreur: ' + error);
+    }
+    
+    function switchTab(tab, event) {
+      // Synchroniser le contenu avant de changer d'onglet
+      syncContent();
+      
+      // Cacher tous les onglets
+      document.getElementById('visualTab').style.display = 'none';
+      document.getElementById('htmlTab').style.display = 'none';
+      
+      // Afficher l'onglet sélectionné
+      document.getElementById(tab + 'Tab').style.display = 'block';
+      
+      // Gérer la visibilité de la toolbar
+      document.getElementById('visualToolbar').style.display = tab === 'visual' ? 'flex' : 'none';
+      
+      // Mettre à jour les classes des onglets
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      if (event && event.target) {
+        event.target.classList.add('active');
+      }
+      
+      currentTab = tab;
+    }
+    
+    function syncContent() {
+      if (currentTab === 'visual') {
+        const html = document.getElementById('visualEditor').innerHTML;
+        document.getElementById('htmlEditor').value = html;
+      } else if (currentTab === 'html') {
+        const html = document.getElementById('htmlEditor').value;
+        document.getElementById('visualEditor').innerHTML = html;
+      }
+    }
+    
+    function formatText(command, value) {
+      // Toujours sauvegarder l'état avant toute modification
+      if (currentTab === 'visual' && !isExecutingCommand) {
+        saveState();
+      }
+      
+      if (command === 'createLink') {
+        value = prompt('Entrez l\'URL:');
+        if (!value) return;
+      }
+      
+      isExecutingCommand = true;
+      document.execCommand(command, false, value);
+      
+      // Forcer la sauvegarde de l'état après l'action
+      setTimeout(() => {
+        isExecutingCommand = false;
+        if (currentTab === 'visual') {
+          saveState();
+        }
+      }, 50);
+    }
+    
+    function updateMarkdown() {
+      // Fonction gardée pour compatibilité mais ne fait plus rien
+      // car l'onglet Markdown a été supprimé
+    }
+    
+    function htmlToMarkdown(html) {
+      // Conversion HTML vers Markdown
+      let md = html;
+      
+      // Remplacer les entités HTML courantes
+      md = md.replace(/&nbsp;/g, ' ');
+      md = md.replace(/&amp;/g, '&');
+      md = md.replace(/&lt;/g, '<');
+      md = md.replace(/&gt;/g, '>');
+      
+      // Convertir les tableaux en Markdown
+      md = md.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, function(match, tableContent) {
+        let markdownTable = '\n\n';
+        let headers = [];
+        let rows = [];
+        
+        // Extraire les en-têtes
+        const headerMatch = tableContent.match(/<thead[^>]*>([\s\S]*?)<\/thead>/i);
+        if (headerMatch) {
+          const headerRows = headerMatch[1].match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
+          if (headerRows && headerRows[0]) {
+            headers = headerRows[0].match(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi) || [];
+            headers = headers.map(h => h.replace(/<[^>]+>/g, '').trim());
+          }
+        }
+        
+        // Si pas d'en-têtes dans thead, chercher dans le premier tr
+        if (headers.length === 0) {
+          const firstRow = tableContent.match(/<tr[^>]*>([\s\S]*?)<\/tr>/i);
+          if (firstRow) {
+            const firstRowCells = firstRow[1].match(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi) || [];
+            if (firstRowCells.length > 0) {
+              headers = firstRowCells.map(h => h.replace(/<[^>]+>/g, '').trim());
+              // Enlever cette ligne du contenu pour ne pas la dupliquer
+              tableContent = tableContent.replace(firstRow[0], '');
+            }
+          }
+        }
+        
+        // Extraire les lignes du corps
+        const bodyMatch = tableContent.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
+        const contentToProcess = bodyMatch ? bodyMatch[1] : tableContent;
+        const bodyRows = contentToProcess.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
+        
+        bodyRows.forEach(row => {
+          const cells = row.match(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi) || [];
+          const rowData = cells.map(cell => cell.replace(/<[^>]+>/g, '').trim());
+          if (rowData.length > 0) {
+            rows.push(rowData);
+          }
+        });
+        
+        // Si on n'a pas d'en-têtes mais des lignes, utiliser la première ligne comme en-têtes
+        if (headers.length === 0 && rows.length > 0) {
+          headers = rows.shift();
+        }
+        
+        // Construire le tableau Markdown
+        if (headers.length > 0) {
+          // Ligne d'en-têtes
+          markdownTable += '| ' + headers.join(' | ') + ' |\n';
+          
+          // Ligne de séparation
+          markdownTable += '|' + headers.map(() => ' --- ').join('|') + '|\n';
+          
+          // Lignes de données
+          rows.forEach(row => {
+            // S'assurer que la ligne a le même nombre de colonnes que les en-têtes
+            while (row.length < headers.length) {
+              row.push('');
+            }
+            markdownTable += '| ' + row.slice(0, headers.length).join(' | ') + ' |\n';
+          });
+        }
+        
+        return markdownTable + '\n';
+      });
+      
+      // Titres
+      md = md.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n');
+      md = md.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n');
+      md = md.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n');
+      md = md.replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n');
+      md = md.replace(/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n\n');
+      md = md.replace(/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n\n');
+      
+      // Gras et italique
+      md = md.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
+      md = md.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
+      md = md.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
+      md = md.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
+      
+      // Soulignement (pas de support natif en Markdown, on garde le HTML)
+      md = md.replace(/<u[^>]*>(.*?)<\/u>/gi, '<u>$1</u>');
+      
+      // Liens
+      md = md.replace(/<a[^>]+href=["']([^"']*?)["'][^>]*>(.*?)<\/a>/gi, '[$2]($1)');
+      
+      // Images
+      md = md.replace(/<img[^>]+src=["']([^"']*?)["'][^>]*alt=["']([^"']*?)["'][^>]*>/gi, '![$2]($1)');
+      md = md.replace(/<img[^>]+src=["']([^"']*?)["'][^>]*>/gi, '![]($1)');
+      
+      // Listes non ordonnées
+      md = md.replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, function(match, content) {
+        return '\n' + content.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n').trim() + '\n';
+      });
+      
+      // Listes ordonnées
+      let olCounter = 0;
+      md = md.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, function(match, content) {
+        olCounter = 0;
+        return '\n' + content.replace(/<li[^>]*>(.*?)<\/li>/gi, function(m, item) {
+          olCounter++;
+          return olCounter + '. ' + item + '\n';
+        }).trim() + '\n';
+      });
+      
+      // Blockquotes
+      md = md.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gi, '> $1\n\n');
+      
+      // Code inline
+      md = md.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`');
+      
+      // Pre/Code blocks
+      md = md.replace(/<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi, '```\n$1\n```\n\n');
+      md = md.replace(/<pre[^>]*>([\s\S]*?)<\/pre>/gi, '```\n$1\n```\n\n');
+      
+      // Paragraphes
+      md = md.replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n');
+      
+      // Sauts de ligne
+      md = md.replace(/<br[^>]*>/gi, '  \n');
+      
+      // Nettoyer les balises restantes communes
+      md = md.replace(/<\/?div[^>]*>/gi, '');
+      md = md.replace(/<\/?span[^>]*>/gi, '');
+      
+      // Nettoyer les espaces multiples et lignes vides excessives
+      md = md.replace(/\n\n\n+/g, '\n\n');
+      md = md.replace(/^\n+/, '');
+      md = md.replace(/\n+$/, '');
+      
+      return md.trim();
+    }
+    
+    function markdownToHtml(markdown) {
+      // Conversion basique Markdown vers HTML
+      let html = markdown;
+      
+      // Conserver les balises HTML existantes si présentes
+      const hasHtmlTags = /<[^>]+>/.test(markdown);
+      if (hasHtmlTags && markdown.includes('<table') && markdown.includes('</table>')) {
+        return markdown; // Retourner tel quel si déjà du HTML avec tableaux
+      }
+      
+      // Titres (doit être fait avant l'échappement)
+      html = html.replace(/^###### (.*?)$/gm, '<h6>$1</h6>');
+      html = html.replace(/^##### (.*?)$/gm, '<h5>$1</h5>');
+      html = html.replace(/^#### (.*?)$/gm, '<h4>$1</h4>');
+      html = html.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
+      html = html.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
+      html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
+      
+      // Gras et italique (avant l'échappement)
+      html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+      
+      // Liens
+      html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+      
+      // Images
+      html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
+      
+      // Tableaux Markdown
+      // Rechercher les tableaux Markdown
+      const tableRegex = /\|(.+)\|\n\|([\s\S]+?)\n((?:\|.+\|\n?)+)/g;
+      
+      html = html.replace(tableRegex, function(match, headerLine, separatorLine, bodyLines) {
+        // Parser les en-têtes
+        const headers = headerLine.split('|').map(h => h.trim()).filter(h => h);
+        
+        // Parser les lignes du corps
+        const rows = bodyLines.trim().split('\n').map(line => {
+          return line.split('|').map(cell => cell.trim()).filter(cell => cell !== undefined);
+        });
+        
+        // Construire le tableau HTML
+        let table = '<table border="1" style="border-collapse: collapse; width: 100%;">\n';
+        
+        // En-têtes
+        table += '<thead>\n<tr>\n';
+        headers.forEach(header => {
+          table += `<th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">${header}</th>\n`;
+        });
+        table += '</tr>\n</thead>\n';
+        
+        // Corps
+        table += '<tbody>\n';
+        rows.forEach(row => {
+          if (row.length > 0) {
+            table += '<tr>\n';
+            for (let i = 0; i < headers.length; i++) {
+              const cellContent = row[i] || '';
+              table += `<td style="border: 1px solid #ddd; padding: 8px;">${cellContent}</td>\n`;
+            }
+            table += '</tr>\n';
+          }
+        });
+        table += '</tbody>\n</table>';
+        
+        return table;
+      });
+      
+      // Listes non ordonnées
+      html = html.replace(/^[-*]\s+(.+)$/gm, '<uli>$1</uli>');
+      html = html.replace(/(<uli>.*<\/uli>\n?)+/g, function(match) {
+        return '<ul>' + match.replace(/<uli>/g, '<li>').replace(/<\/uli>/g, '</li>') + '</ul>';
+      });
+      
+      // Code inline
+      html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+      
+      // Blocs de code
+      html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+      
+      // Blockquotes
+      html = html.replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>');
+      html = html.replace(/(<blockquote>.*<\/blockquote>\n?)+/g, function(match) {
+        return '<blockquote>' + match.replace(/<\/?blockquote>/g, '') + '</blockquote>';
+      });
+      
+      // Paragraphes (seulement pour le texte qui n'est pas déjà dans des balises)
+      html = html.split('\n\n').map(block => {
+        block = block.trim();
+        if (!block) return '';
+        if (block.startsWith('<')) return block;
+        return '<p>' + block + '</p>';
+      }).join('\n\n');
+      
+      // Sauts de ligne simples
+      html = html.replace(/([^>])\n([^<])/g, '$1<br>$2');
+      
+      return html;
+    }
+    
+    function saveContent() {
+      syncContent();
+      
+      const format = document.getElementById('saveFormat').value;
+      let content;
+      
+      if (format === 'markdown') {
+        // Sauvegarder en Markdown
+        // Convertir le HTML actuel en Markdown
+        const html = document.getElementById('htmlEditor').value;
+        content = htmlToMarkdown(html);
+      } else {
+        // Sauvegarder en HTML (par défaut)
+        content = document.getElementById('htmlEditor').value;
+      }
+      
+      // Afficher un indicateur de sauvegarde
+      const saveButton = document.querySelector('.btn-primary');
+      const originalText = saveButton.textContent;
+      saveButton.textContent = 'Sauvegarde...';
+      saveButton.disabled = true;
+      
+      google.script.run
+        .withSuccessHandler(function() {
+          // Afficher un message de succès
+          saveButton.textContent = '✓ Sauvegardé !';
+          setTimeout(() => {
+            google.script.host.close();
+          }, 1000);
+        })
+        .withFailureHandler(function(error) {
+          showError(error);
+          saveButton.textContent = originalText;
+          saveButton.disabled = false;
+        })
+        .saveCellContent(content, cellData.row, cellData.col);
+    }
+    
+    // Fonctions pour les tableaux
+    function showTableDialog() {
+      document.getElementById('tableDialog').style.display = 'block';
+    }
+    
+    function hideTableDialog() {
+      document.getElementById('tableDialog').style.display = 'none';
+    }
+    
+    function insertTable() {
+      if (currentTab !== 'visual') return;
+      
+      // Sauvegarder l'état avant
+      saveState();
+      
+      const rows = parseInt(document.getElementById('tableRows').value);
+      const cols = parseInt(document.getElementById('tableCols').value);
+      
+      let html = '<table border="1" style="border-collapse: collapse; width: 100%;">';
+      html += '<thead><tr>';
+      for (let j = 0; j < cols; j++) {
+        html += '<th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">En-tête ' + (j + 1) + '</th>';
+      }
+      html += '</tr></thead><tbody>';
+      
+      for (let i = 0; i < rows - 1; i++) {
+        html += '<tr>';
+        for (let j = 0; j < cols; j++) {
+          html += '<td style="border: 1px solid #ddd; padding: 8px;">Cellule</td>';
+        }
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+      
+      isExecutingCommand = true;
+      document.execCommand('insertHTML', false, html);
+      hideTableDialog();
+      
+      // Forcer la sauvegarde après
+      setTimeout(() => {
+        isExecutingCommand = false;
+        saveState();
+      }, 50);
+    }
+    
+    function getParentTable() {
+      const selection = window.getSelection();
+      if (selection.rangeCount > 0) {
+        let node = selection.anchorNode;
+        while (node && node.nodeName !== 'TABLE') {
+          node = node.parentElement;
+        }
+        return node;
+      }
+      return null;
+    }
+    
+    function getParentCell() {
+      const selection = window.getSelection();
+      if (selection.rangeCount > 0) {
+        let node = selection.anchorNode;
+        while (node && node.nodeName !== 'TD' && node.nodeName !== 'TH') {
+          node = node.parentElement;
+        }
+        return node;
+      }
+      return null;
+    }
+    
+    // Toutes les fonctions de manipulation de tableaux avec sauvegarde d'état améliorée
+    function addTableRow() {
+      if (currentTab !== 'visual') return;
+      
+      const cell = getParentCell();
+      if (!cell) {
+        alert('Veuillez positionner le curseur dans un tableau.');
+        return;
+      }
+      
+      // Sauvegarder avant
+      saveState();
+      
+      isExecutingCommand = true;
+      const row = cell.parentElement;
+      const newRow = row.cloneNode(true);
+      
+      // Vider le contenu des cellules
+      const cells = newRow.querySelectorAll('td, th');
+      cells.forEach(cell => {
+        cell.textContent = 'Nouvelle cellule';
+      });
+      
+      row.parentNode.insertBefore(newRow, row.nextSibling);
+      
+      // Forcer la sauvegarde après
+      setTimeout(() => {
+        isExecutingCommand = false;
+        saveState();
+      }, 50);
+    }
+    
+    function addTableColumn() {
+      if (currentTab !== 'visual') return;
+      
+      const cell = getParentCell();
+      if (!cell) {
+        alert('Veuillez positionner le curseur dans un tableau.');
+        return;
+      }
+      
+      saveState();
+      
+      isExecutingCommand = true;
+      const cellIndex = Array.from(cell.parentElement.children).indexOf(cell);
+      const table = getParentTable();
+      const rows = table.querySelectorAll('tr');
+      
+      rows.forEach(row => {
+        const cells = row.children;
+        if (cellIndex < cells.length) {
+          const newCell = cells[cellIndex].cloneNode(true);
+          newCell.textContent = 'Nouvelle cellule';
+          cells[cellIndex].parentNode.insertBefore(newCell, cells[cellIndex].nextSibling);
+        }
+      });
+      
+      setTimeout(() => {
+        isExecutingCommand = false;
+        saveState();
+      }, 50);
+    }
+    
+    function deleteTableRow() {
+      if (currentTab !== 'visual') return;
+      
+      const cell = getParentCell();
+      if (!cell) {
+        alert('Veuillez positionner le curseur dans un tableau.');
+        return;
+      }
+      
+      const row = cell.parentElement;
+      const tbody = row.parentElement;
+      
+      // Ne pas supprimer s'il ne reste qu'une ligne
+      if (tbody.children.length > 1) {
+        saveState();
+        isExecutingCommand = true;
+        row.remove();
+        setTimeout(() => {
+          isExecutingCommand = false;
+          saveState();
+        }, 50);
+      } else {
+        alert('Le tableau doit contenir au moins une ligne.');
+      }
+    }
+    
+    function deleteTableColumn() {
+      if (currentTab !== 'visual') return;
+      
+      const cell = getParentCell();
+      if (!cell) {
+        alert('Veuillez positionner le curseur dans un tableau.');
+        return;
+      }
+      
+      const cellIndex = Array.from(cell.parentElement.children).indexOf(cell);
+      const table = getParentTable();
+      const rows = table.querySelectorAll('tr');
+      
+      // Vérifier qu'il reste au moins une colonne
+      const firstRowCells = rows[0].children.length;
+      if (firstRowCells <= 1) {
+        alert('Le tableau doit contenir au moins une colonne.');
+        return;
+      }
+      
+      saveState();
+      isExecutingCommand = true;
+      
+      rows.forEach(row => {
+        const cells = row.children;
+        if (cellIndex < cells.length) {
+          cells[cellIndex].remove();
+        }
+      });
+      
+      setTimeout(() => {
+        isExecutingCommand = false;
+        saveState();
+      }, 50);
+    }
+    
+    function deleteTable() {
+      if (currentTab !== 'visual') return;
+      
+      const table = getParentTable();
+      if (!table) {
+        alert('Veuillez positionner le curseur dans un tableau.');
+        return;
+      }
+      
+      if (confirm('Êtes-vous sûr de vouloir supprimer ce tableau ?')) {
+        saveState();
+        isExecutingCommand = true;
+        table.remove();
+        setTimeout(() => {
+          isExecutingCommand = false;
+          saveState();
+        }, 50);
+      }
+    }
+  </script>
+</body>
+</html>
