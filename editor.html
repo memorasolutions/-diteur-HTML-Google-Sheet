@@ -286,19 +286,16 @@
   
   <script>
     let currentTab = 'visual';
-    let cellData = null;
+    let cellData = <?!= JSON.stringify(cellData) ?>;
     let undoStack = [];
     let redoStack = [];
     let maxUndoSteps = 50;
     let isExecutingCommand = false;
-    
+
     // Initialisation
     window.onload = function() {
-      google.script.run
-        .withSuccessHandler(loadContent)
-        .withFailureHandler(showError)
-        .getCellContent();
-        
+      loadContent(cellData);
+
       // Ajouter les écouteurs pour undo/redo
       document.addEventListener('keydown', handleKeyPress);
     };

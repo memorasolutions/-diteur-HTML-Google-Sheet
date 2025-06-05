@@ -64,7 +64,17 @@ function onSelectionChange(e) {
  * Ouvre l'éditeur HTML dans une boîte de dialogue ou sidebar
  */
 function openEditor(useDialog = false) {
-  const html = HtmlService.createHtmlOutputFromFile('editor')
+  const sheet = SpreadsheetApp.getActiveSheet();
+  const cell = sheet.getActiveCell();
+  const cellData = {
+    content: cell.getValue() || '',
+    row: cell.getRow(),
+    col: cell.getColumn(),
+  };
+
+  const template = HtmlService.createTemplateFromFile('editor');
+  template.cellData = cellData;
+  const html = template.evaluate()
     .setTitle('Éditeur HTML');
     
   const ui = SpreadsheetApp.getUi();
@@ -99,16 +109,6 @@ function editActiveCellDialog() {
 /**
  * Récupère le contenu de la cellule active
  */
-function getCellContent() {
-  const sheet = SpreadsheetApp.getActiveSheet();
-  const cell = sheet.getActiveCell();
-  return {
-    content: cell.getValue() || '',
-    row: cell.getRow(),
-    col: cell.getColumn()
-  };
-}
-
 /**
  * Sauvegarde le contenu dans la cellule
  */
