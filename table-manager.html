@@ -1,0 +1,613 @@
+<script>
+// table-manager.js - Gestion des tableaux
+
+/**
+ * Rend toutes les cellules de tableau éditables
+ */
+function makeTableCellsEditable() {
+  const tables = document.querySelectorAll('#visualEditor table');
+  tables.forEach(table => {
+    const cells = table.querySelectorAll('td:not([contenteditable="true"]), th:not([contenteditable="true"])');
+    cells.forEach(cell => {
+      cell.setAttribute('contenteditable', 'true');
+      
+      // Ajouter la navigation au clavier
+      cell.addEventListener('keydown', handleCellKeyNavigation);
+    });
+  });
+}
+
+/**
+ * Initialise les redimensionneurs de colonnes et lignes
+ */
+function initializeTableResizers() {
+  const tables = document.querySelectorAll('#visualEditor table');
+  
+  tables.forEach(table => {
+    // Nettoyer les anciens redimensionneurs
+    table.querySelectorAll('.table-col-resizer, .table-row-resizer').forEach(r => r.remove());
+    
+    // Ajouter des redimensionneurs de colonnes
+    const firstRow = table.querySelector('tr');
+    if (firstRow) {
+      const cells = firstRow.querySelectorAll('td, th');
+      cells.forEach((cell, index) => {
+        if (index < cells.length - 1) { // Pas sur la dernière colonne
+          const resizer = createColumnResizer(table, index);
+          cell.appendChild(resizer);
+        }
+      });
+    }
+    
+    // Ajouter des redimensionneurs de lignes
+    const rows = table.querySelectorAll('tr');
+    rows.forEach((row, index) => {
+      if (index < rows.length - 1) { // Pas sur la dernière ligne
+        const firstCell = row.querySelector('td, th');
+        if (firstCell) {
+          const resizer = createRowResizer(table, index);
+          firstCell.appendChild(resizer);
+        }
+      }
+    });
+  });
+}
+
+/**
+ * Crée un redimensionneur de colonne
+ */
+function createColumnResizer(table, colIndex) {
+  const resizer = document.createElement('div');
+  resizer.className = 'table-col-resizer';
+  
+  let startX = 0;
+  let startWidth = 0;
+  let currentCol = null;
+  
+  resizer.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    startX = e.clientX;
+    const cells = table.querySelectorAll(`tr td:nth-child(${colIndex + 1}), tr th:nth-child(${colIndex + 1})`);
+    currentCol = cells[0];
+    startWidth = currentCol.offsetWidth;
+    
+    resizer.classList.add('resizing');
+    document.body.style.cursor = 'col-resize';
+    
+    const handleMouseMove = (e) => {
+      const diff = e.clientX - startX;
+      const newWidth = Math.max(60, startWidth + diff); // Min width 60px
+      
+      cells.forEach(cell => {
+        cell.style.width = newWidth + 'px';
+      });
+    };
+    
+    const handleMouseUp = () => {
+      resizer.classList.remove('resizing');
+      document.body.style.cursor = '';
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      
+      // Sauvegarder l'état après redimensionnement
+      saveState();
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  });
+  
+  return resizer;
+}
+
+/**
+ * Crée un redimensionneur de ligne
+ */
+function createRowResizer(table, rowIndex) {
+  const resizer = document.createElement('div');
+  resizer.className = 'table-row-resizer';
+  
+  let startY = 0;
+  let startHeight = 0;
+  let currentRow = null;
+  
+  resizer.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    startY = e.clientY;
+    currentRow = table.querySelectorAll('tr')[rowIndex];
+    startHeight = currentRow.offsetHeight;
+    
+    resizer.classList.add('resizing');
+    document.body.style.cursor = 'row-resize';
+    
+    const handleMouseMove = (e) => {
+      const diff = e.clientY - startY;
+      const newHeight = Math.max(30, startHeight + diff); // Min height 30px
+      
+      currentRow.style.height = newHeight + 'px';
+      const cells = currentRow.querySelectorAll('td, th');
+      cells.forEach(cell => {
+        cell.style.height = newHeight + 'px';
+      });
+    };
+    
+    const handleMouseUp = () => {
+      resizer.classList.remove('resizing');
+      document.body.style.cursor = '';
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      
+      // Sauvegarder l'état après redimensionnement
+      saveState();
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  });
+  
+  return resizer;
+}
+
+/**
+ * Navigation au clavier dans les cellules
+ */
+function handleCellKeyNavigation(e) {
+  const cell = e.target;
+  const table = cell.closest('table');
+  if (!table) return;
+  
+  let targetCell = null;
+  
+  switch(e.key) {
+    case 'Tab':
+      e.preventDefault();
+      targetCell = e.shiftKey ? getPreviousCell(cell) : getNextCell(cell);
+      break;
+    case 'ArrowUp':
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        targetCell = getCellAbove(cell);
+      }
+      break;
+    case 'ArrowDown':
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        targetCell = getCellBelow(cell);
+      }
+      break;
+    case 'ArrowLeft':
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        targetCell = getPreviousCell(cell);
+      }
+      break;
+    case 'ArrowRight':
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        targetCell = getNextCell(cell);
+      }
+      break;
+    case 'Enter':
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        targetCell = getCellBelow(cell);
+      }
+      break;
+  }
+  
+  if (targetCell) {
+    targetCell.focus();
+    // Sélectionner tout le contenu de la cellule
+    const range = document.createRange();
+    range.selectNodeContents(targetCell);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+}
+
+/**
+ * Obtient la cellule suivante
+ */
+function getNextCell(cell) {
+  const nextSibling = cell.nextElementSibling;
+  if (nextSibling) return nextSibling;
+  
+  const nextRow = cell.parentElement.nextElementSibling;
+  if (nextRow) return nextRow.querySelector('td, th');
+  
+  return null;
+}
+
+/**
+ * Obtient la cellule précédente
+ */
+function getPreviousCell(cell) {
+  const previousSibling = cell.previousElementSibling;
+  if (previousSibling) return previousSibling;
+  
+  const previousRow = cell.parentElement.previousElementSibling;
+  if (previousRow) {
+    const cells = previousRow.querySelectorAll('td, th');
+    return cells[cells.length - 1];
+  }
+  
+  return null;
+}
+
+/**
+ * Obtient la cellule au-dessus
+ */
+function getCellAbove(cell) {
+  const cellIndex = Array.from(cell.parentElement.children).indexOf(cell);
+  const previousRow = cell.parentElement.previousElementSibling;
+  
+  if (previousRow) {
+    const cells = previousRow.querySelectorAll('td, th');
+    return cells[cellIndex] || null;
+  }
+  
+  return null;
+}
+
+/**
+ * Obtient la cellule en dessous
+ */
+function getCellBelow(cell) {
+  const cellIndex = Array.from(cell.parentElement.children).indexOf(cell);
+  const nextRow = cell.parentElement.nextElementSibling;
+  
+  if (nextRow) {
+    const cells = nextRow.querySelectorAll('td, th');
+    return cells[cellIndex] || null;
+  }
+  
+  return null;
+}
+
+/**
+ * Met à jour la prévisualisation du tableau
+ */
+function updateTablePreview() {
+  const rows = parseInt(document.getElementById('tableRows').value) || 3;
+  const cols = parseInt(document.getElementById('tableCols').value) || 3;
+  const hasHeaders = document.getElementById('tableHeaders').checked;
+  const hasBorders = document.getElementById('tableBorders').checked;
+  const preview = document.getElementById('tablePreview');
+
+  let html = '<table style="width: 100%; border-collapse: collapse;">';
+
+  // En-tête si demandé
+  if (hasHeaders) {
+    html += '<thead><tr>';
+    for (let j = 0; j < cols; j++) {
+      html += `<th>En-tête ${j + 1}</th>`;
+    }
+    html += '</tr></thead>';
+  }
+
+  // Corps
+  html += '<tbody>';
+  const bodyRows = hasHeaders ? rows - 1 : rows;
+  for (let i = 0; i < bodyRows; i++) {
+    html += '<tr>';
+    for (let j = 0; j < cols; j++) {
+      html += `<td>Cellule ${i + 1}-${j + 1}</td>`;
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+
+  preview.innerHTML = html;
+  
+  // Appliquer les styles selon les options
+  const table = preview.querySelector('table');
+  if (hasBorders) {
+    table.style.border = '1px solid #ddd';
+    preview.querySelectorAll('td, th').forEach(cell => {
+      cell.style.border = '1px solid #ddd';
+      cell.style.padding = '8px';
+    });
+  } else {
+    preview.querySelectorAll('td, th').forEach(cell => {
+      cell.style.padding = '8px';
+    });
+  }
+  
+  if (hasHeaders) {
+    preview.querySelectorAll('th').forEach(th => {
+      th.style.backgroundColor = '#5B9BD5';
+      th.style.color = 'white';
+      th.style.fontWeight = '600';
+    });
+  }
+}
+
+/**
+ * Affiche la boîte de dialogue pour créer un tableau
+ */
+function showTableDialog() {
+  document.getElementById('tableDialog').style.display = 'flex';
+  document.getElementById('tableRows').focus();
+  updateTablePreview();
+}
+
+/**
+ * Cache la boîte de dialogue
+ */
+function hideTableDialog() {
+  document.getElementById('tableDialog').style.display = 'none';
+}
+
+/**
+ * Insère un tableau
+ */
+function insertTable() {
+  if (currentTab !== 'visual') {
+    alert('Veuillez passer en mode Éditeur Visuel pour insérer un tableau.');
+    return;
+  }
+  
+  saveState();
+  
+  const rows = parseInt(document.getElementById('tableRows').value) || 3;
+  const cols = parseInt(document.getElementById('tableCols').value) || 3;
+  const hasHeaders = document.getElementById('tableHeaders').checked;
+  const hasBorders = document.getElementById('tableBorders').checked;
+  
+  let html = '<table style="width: 100%; border-collapse: collapse;';
+  if (hasBorders) {
+    html += ' border: 2px solid #5B9BD5;';
+  }
+  html += '">';
+  
+  // En-têtes
+  if (hasHeaders) {
+    html += '<thead><tr style="background-color: #5B9BD5; color: white;">';
+    for (let j = 0; j < cols; j++) {
+      html += `<th contenteditable="true" style="`;
+      if (hasBorders) html += 'border: 1px solid #5B9BD5; ';
+      html += `padding: 10px;">En-tête ${j + 1}</th>`;
+    }
+    html += '</tr></thead>';
+  }
+  
+  // Corps
+  html += '<tbody>';
+  const bodyRows = hasHeaders ? rows - 1 : rows;
+  for (let i = 0; i < bodyRows; i++) {
+    html += '<tr>';
+    for (let j = 0; j < cols; j++) {
+      html += '<td contenteditable="true" style="';
+      if (hasBorders) html += 'border: 1px solid #ddd; ';
+      html += 'padding: 10px;">Cellule</td>';
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table><p>&nbsp;</p>';
+  
+  isExecutingCommand = true;
+  
+  // S'assurer que l'éditeur a le focus
+  document.getElementById('visualEditor').focus();
+  
+  // Insérer le tableau à la position du curseur
+  document.execCommand('insertHTML', false, html);
+  hideTableDialog();
+  
+  isExecutingCommand = false;
+  saveState();
+  makeTableCellsEditable();
+  initializeTableResizers();
+  checkTableFocus();
+}
+
+/**
+ * Ajoute une ligne au tableau
+ */
+function addTableRow() {
+  if (currentTab !== 'visual') {
+    alert('Veuillez passer en mode Éditeur Visuel pour modifier le tableau.');
+    return;
+  }
+  
+  const cell = getParentCell();
+  if (!cell) {
+    alert('Veuillez cliquer dans une cellule du tableau pour ajouter une ligne.');
+    return;
+  }
+  
+  saveState();
+  
+  isExecutingCommand = true;
+  const row = cell.parentElement;
+  const newRow = row.cloneNode(true);
+  
+  // Vider le contenu des cellules mais garder le style
+  const cells = newRow.querySelectorAll('td, th');
+  cells.forEach((cell, index) => {
+    if (cell.tagName === 'TH') {
+      // Convertir les th en td pour les nouvelles lignes
+      const newTd = document.createElement('td');
+      newTd.style.cssText = cell.style.cssText;
+      newTd.setAttribute('contenteditable', 'true');
+      newTd.textContent = 'Nouvelle cellule';
+      cell.parentNode.replaceChild(newTd, cell);
+    } else {
+      cell.textContent = 'Nouvelle cellule';
+    }
+    // Retirer les redimensionneurs
+    cell.querySelectorAll('.table-col-resizer, .table-row-resizer').forEach(r => r.remove());
+  });
+  
+  // Ajouter après la ligne actuelle
+  row.parentNode.insertBefore(newRow, row.nextSibling);
+  
+  setTimeout(() => {
+    isExecutingCommand = false;
+    saveState();
+    makeTableCellsEditable();
+    initializeTableResizers();
+  }, 50);
+}
+
+/**
+ * Ajoute une colonne au tableau
+ */
+function addTableColumn() {
+  if (currentTab !== 'visual') {
+    alert('Veuillez passer en mode Éditeur Visuel pour modifier le tableau.');
+    return;
+  }
+  
+  const cell = getParentCell();
+  if (!cell) {
+    alert('Veuillez cliquer dans une cellule du tableau pour ajouter une colonne.');
+    return;
+  }
+  
+  saveState();
+  
+  isExecutingCommand = true;
+  const cellIndex = Array.from(cell.parentElement.children).indexOf(cell);
+  const table = getParentTable();
+  const rows = table.querySelectorAll('tr');
+  
+  rows.forEach((row, rowIndex) => {
+    const cells = row.children;
+    if (cellIndex < cells.length) {
+      const refCell = cells[cellIndex];
+      const newCell = refCell.cloneNode(true);
+      newCell.setAttribute('contenteditable', 'true');
+      
+      // Retirer les redimensionneurs
+      newCell.querySelectorAll('.table-col-resizer, .table-row-resizer').forEach(r => r.remove());
+      
+      // Définir le contenu approprié
+      if (rowIndex === 0 && newCell.tagName === 'TH') {
+        newCell.textContent = `En-tête ${cells.length + 1}`;
+      } else {
+        newCell.textContent = 'Nouvelle cellule';
+      }
+      
+      // Insérer après la cellule actuelle
+      refCell.parentNode.insertBefore(newCell, refCell.nextSibling);
+    }
+  });
+  
+  setTimeout(() => {
+    isExecutingCommand = false;
+    saveState();
+    makeTableCellsEditable();
+    initializeTableResizers();
+  }, 50);
+}
+
+/**
+ * Supprime une ligne du tableau
+ */
+function deleteTableRow() {
+  if (currentTab !== 'visual') {
+    alert('Veuillez passer en mode Éditeur Visuel pour modifier le tableau.');
+    return;
+  }
+  
+  const cell = getParentCell();
+  if (!cell) {
+    alert('Veuillez cliquer dans une cellule du tableau pour supprimer une ligne.');
+    return;
+  }
+  
+  const row = cell.parentElement;
+  const table = getParentTable();
+  const allRows = table.querySelectorAll('tr');
+  
+  // Ne pas supprimer s'il ne reste qu'une ligne
+  if (allRows.length <= 1) {
+    alert('Le tableau doit contenir au moins une ligne.');
+    return;
+  }
+  
+  if (confirm('Êtes-vous sûr de vouloir supprimer cette ligne ?')) {
+    saveState();
+    isExecutingCommand = true;
+    row.remove();
+    isExecutingCommand = false;
+    saveState();
+    initializeTableResizers();
+  }
+}
+
+/**
+ * Supprime une colonne du tableau
+ */
+function deleteTableColumn() {
+  if (currentTab !== 'visual') {
+    alert('Veuillez passer en mode Éditeur Visuel pour modifier le tableau.');
+    return;
+  }
+  
+  const cell = getParentCell();
+  if (!cell) {
+    alert('Veuillez cliquer dans une cellule du tableau pour supprimer une colonne.');
+    return;
+  }
+  
+  const cellIndex = Array.from(cell.parentElement.children).indexOf(cell);
+  const table = getParentTable();
+  const rows = table.querySelectorAll('tr');
+  
+  // Vérifier qu'il reste au moins une colonne
+  const firstRowCells = rows[0].children.length;
+  if (firstRowCells <= 1) {
+    alert('Le tableau doit contenir au moins une colonne.');
+    return;
+  }
+  
+  if (confirm('Êtes-vous sûr de vouloir supprimer cette colonne ?')) {
+    saveState();
+    isExecutingCommand = true;
+    
+    rows.forEach(row => {
+      const cells = row.children;
+      if (cellIndex < cells.length) {
+        cells[cellIndex].remove();
+      }
+    });
+    
+    isExecutingCommand = false;
+    saveState();
+    initializeTableResizers();
+  }
+}
+
+/**
+ * Supprime le tableau
+ */
+function deleteTable() {
+  if (currentTab !== 'visual') {
+    alert('Veuillez passer en mode Éditeur Visuel pour supprimer le tableau.');
+    return;
+  }
+  
+  const table = getParentTable();
+  if (!table) {
+    alert('Veuillez cliquer dans un tableau pour le supprimer.');
+    return;
+  }
+  
+  if (confirm('Êtes-vous sûr de vouloir supprimer ce tableau ?')) {
+    saveState();
+    isExecutingCommand = true;
+    table.remove();
+    
+    isExecutingCommand = false;
+    saveState();
+    checkTableFocus();
+  }
+}
+</script>
