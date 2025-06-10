@@ -109,7 +109,7 @@ function openEditor(cell) {
     .setTitle('Éditeur HTML');
     
   const ui = SpreadsheetApp.getUi();
-  html.setWidth(900).setHeight(700);
+  html.setWidth(900).setHeight(750);
   ui.showModalDialog(html, 'Éditeur HTML');
 }
 
