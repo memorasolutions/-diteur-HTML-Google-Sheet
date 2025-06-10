@@ -6,44 +6,8 @@
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Éditeur HTML')
-    .addItem('Éditer dans la barre latérale', 'editActiveCell')
-    .addItem('Éditer dans une fenêtre (plus large)', 'editActiveCellDialog')
+    .addItem('Éditer la cellule active', 'editActiveCellDialog')
     .addToUi();
-}
-
-/**
- * Édite la cellule active si elle contient du HTML
- */
-function editActiveCell() {
-  const sheet = SpreadsheetApp.getActiveSheet();
-  const cell = sheet.getActiveCell();
-  const value = cell.getValue();
-  
-  if (typeof value !== 'string') {
-    SpreadsheetApp.getUi().alert('La cellule active ne contient pas de texte.');
-    return;
-  }
-
-  if (!value) {
-    openEditor(false, cell);
-    return;
-  }
-  
-  if (value.includes('<') && value.includes('>')) {
-    openEditor(false, cell);
-  } else {
-    // Proposer d'ouvrir même sans HTML
-    const ui = SpreadsheetApp.getUi();
-    const response = ui.alert(
-      'Pas de HTML détecté', 
-      'La cellule ne semble pas contenir de HTML. Voulez-vous l\'éditer quand même ?',
-      ui.ButtonSet.YES_NO
-    );
-    
-    if (response == ui.Button.YES) {
-      openEditor(false, cell);
-    }
-  }
 }
 
 /**
@@ -59,14 +23,14 @@ function onSelectionChange(e) {
   
   // Vérifier si la cellule contient du HTML
   if (value.includes('<') && value.includes('>')) {
-    openEditor(false, range);
+    openEditor(range);
   }
 }
 
 /**
- * Ouvre l'éditeur HTML dans une boîte de dialogue ou sidebar
+ * Ouvre l'éditeur HTML dans une boîte de dialogue
  */
-function openEditor(useDialog = false, cell) {
+function openEditor(cell) {
   cell = cell || SpreadsheetApp.getActiveSheet().getActiveCell();
   const cellData = {
     content: cell.getValue() || '',
@@ -80,16 +44,8 @@ function openEditor(useDialog = false, cell) {
     .setTitle('Éditeur HTML');
     
   const ui = SpreadsheetApp.getUi();
-  
-  if (useDialog) {
-    // Boîte de dialogue modale (peut être plus large)
-    html.setWidth(900).setHeight(700);
-    ui.showModalDialog(html, 'Éditeur HTML');
-  } else {
-    // Sidebar (max 600px de large)
-    html.setWidth(600);
-    ui.showSidebar(html);
-  }
+  html.setWidth(900).setHeight(700);
+  ui.showModalDialog(html, 'Éditeur HTML');
 }
 
 /**
@@ -105,7 +61,7 @@ function editActiveCellDialog() {
     return;
   }
   
-  openEditor(true, cell); // Ouvre en mode dialogue
+  openEditor(cell);
 }
 
 /**
