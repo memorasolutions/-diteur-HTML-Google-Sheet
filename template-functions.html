@@ -1,0 +1,339 @@
+<script>
+// template-functions.js - Gestion des templates
+
+let templates = {};
+
+/**
+ * Charge les templates depuis le serveur
+ */
+function loadTemplates() {
+  console.log('Chargement des templates...');
+  google.script.run
+    .withSuccessHandler(function(result) {
+      console.log('Templates chargés:', result);
+      templates = result || {};
+      
+      // Si aucun template, proposer de créer des exemples
+      if (Object.keys(templates).length === 0) {
+        console.log('Aucun template trouvé');
+      }
+    })
+    .withFailureHandler(function(error) {
+      console.error('Erreur lors du chargement des templates:', error);
+      templates = {};
+    })
+    .getTemplates();
+}
+
+/**
+ * Affiche la boîte de dialogue des templates
+ */
+function showTemplateDialog() {
+  document.getElementById('templateDialog').style.display = 'flex';
+  refreshTemplateList();
+}
+
+/**
+ * Cache la boîte de dialogue des templates
+ */
+function hideTemplateDialog() {
+  document.getElementById('templateDialog').style.display = 'none';
+}
+
+/**
+ * Rafraîchit la liste des templates
+ */
+function refreshTemplateList() {
+  const templateList = document.getElementById('templateList');
+  templateList.innerHTML = '';
+  
+  if (Object.keys(templates).length === 0) {
+    templateList.innerHTML = `
+      <div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+        <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+        <p>Aucun template disponible</p>
+        <p style="font-size: 14px;">Créez votre premier template en cliquant sur "Sauvegarder comme template"</p>
+      </div>
+    `;
+    return;
+  }
+  
+  Object.entries(templates).forEach(([name, template]) => {
+    const templateItem = createElement('div', {
+      class: 'template-item',
+      onclick: () => insertTemplate(name)
+    }, [
+      createElement('h4', {}, [name]),
+      template.description ? createElement('p', {}, [template.description]) : null,
+      createElement('div', { class: 'template-date' }, [
+        `Créé le ${formatDate(template.createdAt)}`
+      ]),
+      createElement('div', { class: 'template-actions' }, [
+        createElement('button', {
+          onclick: (e) => {
+            e.stopPropagation();
+            previewTemplate(name);
+          },
+          title: 'Prévisualiser'
+        }, [createElement('i', { class: 'fas fa-eye' })]),
+        createElement('button', {
+          onclick: (e) => {
+            e.stopPropagation();
+            if (confirm(`Êtes-vous sûr de vouloir supprimer le template "${name}" ?`)) {
+              deleteTemplateItem(name);
+            }
+          },
+          title: 'Supprimer'
+        }, [createElement('i', { class: 'fas fa-trash' })])
+      ])
+    ].filter(Boolean));
+    
+    templateList.appendChild(templateItem);
+  });
+}
+
+/**
+ * Insère un template à la position du curseur
+ */
+function insertTemplate(name) {
+  const template = templates[name];
+  if (!template) return;
+  
+  if (currentTab !== 'visual') {
+    alert('Veuillez passer en mode Éditeur Visuel pour insérer un template.');
+    return;
+  }
+  
+  saveState();
+  isExecutingCommand = true;
+  
+  // S'assurer que l'éditeur a le focus
+  document.getElementById('visualEditor').focus();
+  
+  // Insérer le contenu du template
+  document.execCommand('insertHTML', false, template.content);
+  
+  isExecutingCommand = false;
+  saveState();
+  makeTableCellsEditable();
+  initializeTableResizers();
+  
+  hideTemplateDialog();
+  
+  // Afficher un message de succès
+  showNotification('Template inséré avec succès', 'success');
+}
+
+/**
+ * Prévisualise un template
+ */
+function previewTemplate(name) {
+  const template = templates[name];
+  if (!template) return;
+  
+  const previewDialog = createElement('div', {
+    class: 'dialog-overlay',
+    style: 'display: flex; z-index: 2000;'
+  }, [
+    createElement('div', {
+      class: 'dialog-backdrop',
+      onclick: () => previewDialog.remove()
+    }),
+    createElement('div', {
+      class: 'dialog-container',
+      style: 'width: 80%; max-width: 800px; height: 80vh;'
+    }, [
+      createElement('div', { class: 'dialog-header' }, [
+        createElement('h3', {}, [
+          createElement('i', { class: 'fas fa-eye' }),
+          ` Prévisualisation : ${name}`
+        ]),
+        createElement('button', {
+          class: 'dialog-close',
+          onclick: () => previewDialog.remove()
+        }, [createElement('i', { class: 'fas fa-times' })])
+      ]),
+      createElement('div', {
+        class: 'dialog-body',
+        style: 'overflow-y: auto;'
+      }, [
+        createElement('div', {
+          style: 'padding: 20px; background: white; border-radius: 8px;',
+          innerHTML: template.content
+        })
+      ]),
+      createElement('div', { class: 'dialog-footer' }, [
+        createElement('button', {
+          class: 'btn btn-secondary',
+          onclick: () => previewDialog.remove()
+        }, ['Fermer']),
+        createElement('button', {
+          class: 'btn btn-primary',
+          onclick: () => {
+            previewDialog.remove();
+            insertTemplate(name);
+          }
+        }, [
+          createElement('i', { class: 'fas fa-check' }),
+          ' Utiliser ce template'
+        ])
+      ])
+    ])
+  ]);
+  
+  document.body.appendChild(previewDialog);
+}
+
+/**
+ * Supprime un template
+ */
+function deleteTemplateItem(name) {
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (result.success) {
+        delete templates[name];
+        refreshTemplateList();
+        showNotification('Template supprimé', 'success');
+      }
+    })
+    .withFailureHandler(function(error) {
+      showNotification('Erreur lors de la suppression: ' + error, 'error');
+    })
+    .deleteTemplate(name);
+}
+
+/**
+ * Affiche la boîte de dialogue pour sauvegarder comme template
+ */
+function saveAsTemplate() {
+  // Synchroniser le contenu si nécessaire
+  if (currentTab === 'visual') {
+    const html = document.getElementById('visualEditor').innerHTML;
+    document.getElementById('htmlEditor').value = html;
+  }
+  
+  document.getElementById('saveTemplateDialog').style.display = 'flex';
+  document.getElementById('templateName').value = '';
+  document.getElementById('templateDescription').value = '';
+  document.getElementById('templateName').focus();
+}
+
+/**
+ * Cache la boîte de dialogue de sauvegarde
+ */
+function hideSaveTemplateDialog() {
+  document.getElementById('saveTemplateDialog').style.display = 'none';
+}
+
+/**
+ * Confirme la sauvegarde du template
+ */
+function confirmSaveTemplate() {
+  const name = document.getElementById('templateName').value.trim();
+  const description = document.getElementById('templateDescription').value.trim();
+  
+  if (!name) {
+    alert('Veuillez entrer un nom pour le template');
+    document.getElementById('templateName').focus();
+    return;
+  }
+  
+  // Vérifier si le nom existe déjà
+  if (templates[name]) {
+    if (!confirm(`Un template nommé "${name}" existe déjà. Voulez-vous le remplacer ?`)) {
+      return;
+    }
+  }
+  
+  const content = document.getElementById('htmlEditor').value;
+  
+  // Sauvegarder le template
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (result.success) {
+        // Mettre à jour la liste locale
+        templates[name] = {
+          content: content,
+          description: description,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        
+        hideSaveTemplateDialog();
+        showNotification('Template sauvegardé avec succès', 'success');
+      }
+    })
+    .withFailureHandler(function(error) {
+      showNotification('Erreur lors de la sauvegarde: ' + error, 'error');
+    })
+    .saveTemplate(name, content, description);
+}
+
+/**
+ * Affiche une notification
+ */
+function showNotification(message, type = 'info') {
+  const colors = {
+    success: { bg: '#D1FAE5', text: '#065F46', icon: 'check-circle' },
+    error: { bg: '#FEE2E2', text: '#991B1B', icon: 'exclamation-circle' },
+    info: { bg: '#DBEAFE', text: '#1E40AF', icon: 'info-circle' },
+    warning: { bg: '#FEF3C7', text: '#92400E', icon: 'exclamation-triangle' }
+  };
+  
+  const color = colors[type] || colors.info;
+  
+  const notification = createElement('div', {
+    style: `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${color.bg};
+      color: ${color.text};
+      padding: 12px 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      z-index: 10000;
+      max-width: 400px;
+      animation: slideIn 0.3s ease;
+    `
+  }, [
+    createElement('div', {
+      style: 'display: flex; align-items: center; gap: 10px;'
+    }, [
+      createElement('i', { class: `fas fa-${color.icon}` }),
+      createElement('span', {}, [message])
+    ])
+  ]);
+  
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.style.animation = 'slideOut 0.3s ease';
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
+}
+
+// Ajouter les event listeners pour les touches Enter
+document.addEventListener('DOMContentLoaded', () => {
+  const templateNameInput = document.getElementById('templateName');
+  const templateDescInput = document.getElementById('templateDescription');
+  
+  if (templateNameInput) {
+    templateNameInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        templateDescInput.focus();
+      }
+    });
+  }
+  
+  if (templateDescInput) {
+    templateDescInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        confirmSaveTemplate();
+      }
+    });
+  }
+});
+</script>
