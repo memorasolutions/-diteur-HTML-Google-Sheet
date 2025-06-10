@@ -514,6 +514,11 @@
     
     function htmlToMarkdown(html) {
       // Conversion HTML vers Markdown
+      // Si aucun tag HTML n'est présent, retourner rapidement le texte
+      if (!/<[a-z][\s\S]*>/i.test(html)) {
+        return html.replace(/\n{2,}/g, '\n').trim();
+      }
+
       let md = html;
       
       // Remplacer les entités HTML courantes
@@ -522,11 +527,12 @@
       md = md.replace(/&lt;/g, '<');
       md = md.replace(/&gt;/g, '>');
       
-      // Convertir les tableaux en Markdown
-      md = md.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, function(match, tableContent) {
-        let markdownTable = '\n\n';
-        let headers = [];
-        let rows = [];
+      // Convertir les tableaux en Markdown uniquement si des tableaux sont présents
+      if (md.includes('<table')) {
+        md = md.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, function(match, tableContent) {
+          let markdownTable = '\n\n';
+          let headers = [];
+          let rows = [];
         
         // Extraire les en-têtes
         const headerMatch = tableContent.match(/<thead[^>]*>([\s\S]*?)<\/thead>/i);
@@ -587,8 +593,9 @@
           });
         }
         
-        return markdownTable + '\n';
-      });
+          return markdownTable + '\n';
+        });
+      }
       
       // Titres
       md = md.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n');
@@ -614,20 +621,23 @@
       md = md.replace(/<img[^>]+src=["']([^"']*?)["'][^>]*alt=["']([^"']*?)["'][^>]*>/gi, '![$2]($1)');
       md = md.replace(/<img[^>]+src=["']([^"']*?)["'][^>]*>/gi, '![]($1)');
       
-      // Listes non ordonnées
-      md = md.replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, function(match, content) {
-        return '\n' + content.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n').trim() + '\n';
-      });
-      
-      // Listes ordonnées
-      let olCounter = 0;
-      md = md.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, function(match, content) {
-        olCounter = 0;
-        return '\n' + content.replace(/<li[^>]*>(.*?)<\/li>/gi, function(m, item) {
-          olCounter++;
-          return olCounter + '. ' + item + '\n';
-        }).trim() + '\n';
-      });
+      // Listes
+      if (md.includes('<ul')) {
+        md = md.replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, function(match, content) {
+          return '\n' + content.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n').trim() + '\n';
+        });
+      }
+
+      if (md.includes('<ol')) {
+        let olCounter = 0;
+        md = md.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, function(match, content) {
+          olCounter = 0;
+          return '\n' + content.replace(/<li[^>]*>(.*?)<\/li>/gi, function(m, item) {
+            olCounter++;
+            return olCounter + '. ' + item + '\n';
+          }).trim() + '\n';
+        });
+      }
       
       // Blockquotes
       md = md.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gi, '> $1\n\n');
@@ -783,9 +793,8 @@
         .withSuccessHandler(function() {
           // Afficher un message de succès
           saveButton.textContent = '✓ Sauvegardé !';
-          setTimeout(() => {
-            google.script.host.close();
-          }, 1000);
+          // Fermer rapidement la fenêtre après sauvegarde
+          google.script.host.close();
         })
         .withFailureHandler(function(error) {
           showError(error);
