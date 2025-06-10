@@ -1,0 +1,367 @@
+<script>
+// utils.js - Fonctions utilitaires
+
+/**
+ * Obtient l'élément parent de type table
+ */
+function getParentTable() {
+  const selection = window.getSelection();
+  if (selection.rangeCount > 0) {
+    let node = selection.anchorNode;
+    while (node && node.nodeName !== 'TABLE') {
+      node = node.parentElement;
+    }
+    return node;
+  }
+  return null;
+}
+
+/**
+ * Obtient la cellule parente (TD ou TH)
+ */
+function getParentCell() {
+  const selection = window.getSelection();
+  if (selection.rangeCount > 0) {
+    let node = selection.anchorNode;
+    while (node && node.nodeName !== 'TD' && node.nodeName !== 'TH') {
+      node = node.parentElement;
+    }
+    return node;
+  }
+  return null;
+}
+
+/**
+ * Obtient toutes les cellules sélectionnées
+ */
+function getSelectedCells() {
+  const selection = window.getSelection();
+  if (!selection.rangeCount) return [];
+  const range = selection.getRangeAt(0);
+  const allCells = Array.from(document.querySelectorAll('#visualEditor td, #visualEditor th'));
+  return allCells.filter(cell => range.intersectsNode(cell));
+}
+
+/**
+ * Convertit une couleur RGB en hexadécimal
+ */
+function rgbToHex(color) {
+  if (!color) return '#000000';
+  
+  // Si c'est déjà en hexadécimal
+  if (color.startsWith('#')) {
+    return color.length === 7 ? color : '#000000';
+  }
+  
+  // Si c'est transparent
+  if (color === 'transparent' || color === 'rgba(0, 0, 0, 0)') {
+    return '#ffffff';
+  }
+  
+  // Extraire les valeurs RGB
+  const result = color.match(/\d+/g);
+  if (!result || result.length < 3) return '#000000';
+  
+  const r = parseInt(result[0]).toString(16).padStart(2, '0');
+  const g = parseInt(result[1]).toString(16).padStart(2, '0');
+  const b = parseInt(result[2]).toString(16).padStart(2, '0');
+  
+  return `#${r}${g}${b}`;
+}
+
+/**
+ * Nettoie le HTML en préservant la structure
+ */
+function cleanHtml(html) {
+  // Créer un élément temporaire pour parser le HTML
+  const temp = document.createElement('div');
+  temp.innerHTML = html;
+  
+  // Nettoyer les attributs style vides
+  temp.querySelectorAll('[style=""]').forEach(el => {
+    el.removeAttribute('style');
+  });
+  
+  // Nettoyer les spans vides
+  temp.querySelectorAll('span').forEach(span => {
+    if (!span.hasAttributes() && span.innerHTML.trim() === '') {
+      span.remove();
+    }
+  });
+  
+  return temp.innerHTML;
+}
+
+/**
+ * Débounce une fonction
+ */
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+/**
+ * Obtient la position du curseur dans un élément contenteditable
+ */
+function getCaretPosition(element) {
+  const selection = window.getSelection();
+  if (selection.rangeCount === 0) return 0;
+  
+  const range = selection.getRangeAt(0);
+  const preCaretRange = range.cloneRange();
+  preCaretRange.selectNodeContents(element);
+  preCaretRange.setEnd(range.endContainer, range.endOffset);
+  
+  return preCaretRange.toString().length;
+}
+
+/**
+ * Définit la position du curseur dans un élément contenteditable
+ */
+function setCaretPosition(element, position) {
+  const createRange = (node, chars, range) => {
+    if (!range) {
+      range = document.createRange();
+      range.selectNode(node);
+      range.setStart(node, 0);
+    }
+
+    if (chars.count === 0) {
+      range.setEnd(node, chars.count);
+    } else if (node && chars.count > 0) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        if (node.textContent.length < chars.count) {
+          chars.count -= node.textContent.length;
+        } else {
+          range.setEnd(node, chars.count);
+          chars.count = 0;
+        }
+      } else {
+        for (let lp = 0; lp < node.childNodes.length; lp++) {
+          range = createRange(node.childNodes[lp], chars, range);
+          if (chars.count === 0) {
+            break;
+          }
+        }
+      }
+    }
+    
+    return range;
+  };
+
+  if (position >= 0) {
+    const selection = window.getSelection();
+    const range = createRange(element, { count: position });
+    
+    if (range) {
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+  }
+}
+
+/**
+ * Copie le texte dans le presse-papiers
+ */
+async function copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch (err) {
+    // Fallback pour les anciens navigateurs
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      return true;
+    } catch (err) {
+      document.body.removeChild(textArea);
+      return false;
+    }
+  }
+}
+
+/**
+ * Vérifie si un élément est visible dans la viewport
+ */
+function isElementInViewport(el) {
+  const rect = el.getBoundingClientRect();
+  return (
+    rect.top >= 0 &&
+    rect.left >= 0 &&
+    rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+    rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+  );
+}
+
+/**
+ * Fait défiler jusqu'à un élément
+ */
+function scrollToElement(element, offset = 100) {
+  const elementRect = element.getBoundingClientRect();
+  const absoluteElementTop = elementRect.top + window.pageYOffset;
+  const middle = absoluteElementTop - offset;
+  
+  window.scrollTo({
+    top: middle,
+    behavior: 'smooth'
+  });
+}
+
+/**
+ * Génère un ID unique
+ */
+function generateUniqueId(prefix = 'id') {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Formatte une date
+ */
+function formatDate(date) {
+  const options = { 
+    year: 'numeric', 
+    month: 'long', 
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  };
+  return new Date(date).toLocaleDateString('fr-CA', options);
+}
+
+/**
+ * Obtient le texte sélectionné
+ */
+function getSelectedText() {
+  const selection = window.getSelection();
+  return selection.toString();
+}
+
+/**
+ * Vérifie si la sélection est dans l'éditeur
+ */
+function isSelectionInEditor() {
+  const selection = window.getSelection();
+  if (selection.rangeCount === 0) return false;
+  
+  const range = selection.getRangeAt(0);
+  const editor = document.getElementById('visualEditor');
+  
+  return editor.contains(range.commonAncestorContainer);
+}
+
+/**
+ * Obtient les styles calculés d'un élément
+ */
+function getComputedStyles(element) {
+  return window.getComputedStyle(element);
+}
+
+/**
+ * Fusionne les styles CSS
+ */
+function mergeStyles(baseStyle, newStyle) {
+  const base = baseStyle ? baseStyle.split(';').filter(s => s.trim()) : [];
+  const newStyles = newStyle ? newStyle.split(';').filter(s => s.trim()) : [];
+  
+  const styleMap = {};
+  
+  // Parser les styles de base
+  base.forEach(style => {
+    const [prop, value] = style.split(':').map(s => s.trim());
+    if (prop && value) {
+      styleMap[prop] = value;
+    }
+  });
+  
+  // Ajouter/écraser avec les nouveaux styles
+  newStyles.forEach(style => {
+    const [prop, value] = style.split(':').map(s => s.trim());
+    if (prop && value) {
+      styleMap[prop] = value;
+    }
+  });
+  
+  // Reconstruire la chaîne de style
+  return Object.entries(styleMap)
+    .map(([prop, value]) => `${prop}: ${value}`)
+    .join('; ');
+}
+
+/**
+ * Vérifie si un élément a une classe
+ */
+function hasClass(element, className) {
+  return element.classList.contains(className);
+}
+
+/**
+ * Ajoute ou retire une classe selon une condition
+ */
+function toggleClass(element, className, condition) {
+  if (condition) {
+    element.classList.add(className);
+  } else {
+    element.classList.remove(className);
+  }
+}
+
+/**
+ * Crée un élément avec des attributs
+ */
+function createElement(tag, attributes = {}, children = []) {
+  const element = document.createElement(tag);
+  
+  Object.entries(attributes).forEach(([key, value]) => {
+    if (key === 'style' && typeof value === 'object') {
+      Object.assign(element.style, value);
+    } else if (key === 'class') {
+      element.className = value;
+    } else if (key.startsWith('on')) {
+      element.addEventListener(key.substring(2).toLowerCase(), value);
+    } else {
+      element.setAttribute(key, value);
+    }
+  });
+  
+  children.forEach(child => {
+    if (typeof child === 'string') {
+      element.appendChild(document.createTextNode(child));
+    } else {
+      element.appendChild(child);
+    }
+  });
+  
+  return element;
+}
+
+/**
+ * Trouve le parent le plus proche avec un sélecteur
+ */
+function findClosest(element, selector) {
+  return element.closest(selector);
+}
+
+/**
+ * Empêche la propagation d'un événement
+ */
+function stopEvent(event) {
+  event.preventDefault();
+  event.stopPropagation();
+}
+</script>
