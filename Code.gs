@@ -96,3 +96,19 @@ function sanitizeHtml(html) {
   
   return html;
 }
+
+/**
+ * Insère un bouton d'accès direct à l'éditeur HTML.
+ * Le bouton est ajouté en haut à gauche de la feuille et
+ * exécute la fonction editActiveCellDialog lors d'un clic.
+ */
+function insertEditorButton() {
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var imageUrl = 'https://www.gstatic.com/images/icons/material/system/1x/edit_black_24dp.png';
+  var blob = UrlFetchApp.fetch(imageUrl).getBlob();
+  var button = sheet.insertImage(blob, 1, 1);
+  if (button.assignScript) {
+    button.assignScript('editActiveCellDialog');
+  }
+  button.setAltTextDescription('Éditer la cellule active');
+}
