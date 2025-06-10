@@ -1,0 +1,428 @@
+<script>
+// format-converter.js - Conversion entre HTML et Markdown
+
+/**
+ * Convertit du HTML en Markdown
+ */
+function htmlToMarkdown(html) {
+  // Retour rapide si pas de HTML
+  if (!html || !html.includes('<')) {
+    return html.trim();
+  }
+
+  let md = html;
+  
+  // Utiliser un parser temporaire pour une conversion plus rapide
+  const temp = document.createElement('div');
+  temp.innerHTML = html;
+  
+  // Convertir les tableaux en premier (plus complexe)
+  const tables = temp.querySelectorAll('table');
+  tables.forEach(table => {
+    let markdownTable = '\n\n';
+    const rows = table.querySelectorAll('tr');
+    
+    if (rows.length > 0) {
+      // Headers
+      const headers = [];
+      const firstRowCells = rows[0].querySelectorAll('th, td');
+      firstRowCells.forEach(cell => {
+        headers.push(cell.textContent.trim());
+      });
+      
+      if (headers.length > 0) {
+        markdownTable += '| ' + headers.join(' | ') + ' |\n';
+        markdownTable += '|' + headers.map(() => ' --- ').join('|') + '|\n';
+        
+        // Body rows
+        for (let i = 1; i < rows.length; i++) {
+          const cells = rows[i].querySelectorAll('td, th');
+          const rowData = [];
+          cells.forEach(cell => {
+            rowData.push(cell.textContent.trim());
+          });
+          if (rowData.length > 0) {
+            markdownTable += '| ' + rowData.join(' | ') + ' |\n';
+          }
+        }
+      }
+    }
+    
+    // Remplacer le tableau par un placeholder
+    const placeholder = `<!--TABLE_${Math.random()}-->`;
+    table.outerHTML = placeholder;
+    md = md.replace(placeholder, markdownTable);
+  });
+  
+  // Conversions simples avec des regex optimisées
+  md = temp.innerHTML;
+  
+  // Remplacements en une seule passe
+  const replacements = [
+    [/&nbsp;/g, ' '],
+    [/&amp;/g, '&'],
+    [/&lt;/g, '<'],
+    [/&gt;/g, '>'],
+    [/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n'],
+    [/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n'],
+    [/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n'],
+    [/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n'],
+    [/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n\n'],
+    [/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n\n'],
+    [/<(strong|b)[^>]*>(.*?)<\/(strong|b)>/gi, '**$2**'],
+    [/<(em|i)[^>]*>(.*?)<\/(em|i)>/gi, '*$2*'],
+    [/<a[^>]+href=["']([^"']*?)["'][^>]*>(.*?)<\/a>/gi, '[$2]($1)'],
+    [/<img[^>]+src=["']([^"']*?)["'][^>]*alt=["']([^"']*?)["'][^>]*>/gi, '![$2]($1)'],
+    [/<img[^>]+src=["']([^"']*?)["'][^>]*>/gi, '![]($1)'],
+    [/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n'],
+    [/<br[^>]*>/gi, '  \n'],
+    [/<\/?div[^>]*>/gi, ''],
+    [/<\/?span[^>]*>/gi, ''],
+    [/<ul[^>]*>(.*?)<\/ul>/gis, (match, content) => {
+      return content.replace(/<li[^>]*>(.*?)<\/li>/gi, '* $1\n') + '\n';
+    }],
+    [/<ol[^>]*>(.*?)<\/ol>/gis, (match, content) => {
+      let counter = 1;
+      return content.replace(/<li[^>]*>(.*?)<\/li>/gi, () => {
+        return `${counter++}. $1\n`;
+      }) + '\n';
+    }],
+    [/<blockquote[^>]*>(.*?)<\/blockquote>/gi, (match, content) => {
+      return '> ' + content.trim().replace(/\n/g, '\n> ') + '\n\n';
+    }],
+    [/<code[^>]*>(.*?)<\/code>/gi, '`$1`'],
+    [/<pre[^>]*>(.*?)<\/pre>/gis, '```\n$1\n```\n\n'],
+    [/<del[^>]*>(.*?)<\/del>/gi, '~~$1~~'],
+    [/<s[^>]*>(.*?)<\/s>/gi, '~~$1~~'],
+    [/<strike[^>]*>(.*?)<\/strike>/gi, '~~$1~~']
+  ];
+  
+  replacements.forEach(([regex, replacement]) => {
+    md = md.replace(regex, replacement);
+  });
+  
+  // Nettoyage final
+  return md
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/^\s+/gm, '')
+    .trim();
+}
+
+/**
+ * Convertit du Markdown en HTML
+ */
+function markdownToHtml(markdown) {
+  // Retour rapide si déjà du HTML
+  if (!markdown || (markdown.includes('<table') && markdown.includes('</table>'))) {
+    return markdown;
+  }
+  
+  let html = markdown;
+  
+  // Échapper les caractères HTML spéciaux sauf dans les balises
+  html = html
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  
+  // Tableaux Markdown (plus complexe, fait en premier)
+  if (html.includes('|')) {
+    const tableRegex = /^\|(.+)\|\n\|([\s\S]+?)\n((?:\|.+\|\n?)+)/gm;
+    html = html.replace(tableRegex, (match, headerLine, separatorLine, bodyLines) => {
+      const headers = headerLine.split('|').map(h => h.trim()).filter(h => h);
+      const rows = bodyLines.trim().split('\n').map(line => 
+        line.split('|').map(cell => cell.trim()).filter(cell => cell !== undefined)
+      );
+      
+      let table = '<table style="width: 100%; border-collapse: collapse; border: 1px solid #ddd;">\n<thead>\n<tr>\n';
+      headers.forEach(header => {
+        table += `<th contenteditable="true" style="border: 1px solid #ddd; padding: 8px; background-color: #5B9BD5; color: white;">${header}</th>\n`;
+      });
+      table += '</tr>\n</thead>\n<tbody>\n';
+      
+      rows.forEach(row => {
+        if (row.length > 0) {
+          table += '<tr>\n';
+          for (let i = 0; i < headers.length; i++) {
+            table += `<td contenteditable="true" style="border: 1px solid #ddd; padding: 8px;">${row[i] || ''}</td>\n`;
+          }
+          table += '</tr>\n';
+        }
+      });
+      table += '</tbody>\n</table>';
+      
+      return table;
+    });
+  }
+  
+  // Bloc de code (avant les inline codes)
+  html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+  
+  // Remplacements simples
+  const inlineReplacements = [
+    // Headers (du plus grand au plus petit)
+    [/^######\s+(.*?)$/gm, '<h6>$1</h6>'],
+    [/^#####\s+(.*?)$/gm, '<h5>$1</h5>'],
+    [/^####\s+(.*?)$/gm, '<h4>$1</h4>'],
+    [/^###\s+(.*?)$/gm, '<h3>$1</h3>'],
+    [/^##\s+(.*?)$/gm, '<h2>$1</h2>'],
+    [/^#\s+(.*?)$/gm, '<h1>$1</h1>'],
+    
+    // Styles de texte
+    [/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>'],
+    [/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'],
+    [/\*([^*]+)\*/g, '<em>$1</em>'],
+    [/__([^_]+)__/g, '<strong>$1</strong>'],
+    [/_([^_]+)_/g, '<em>$1</em>'],
+    [/~~([^~]+)~~/g, '<del>$1</del>'],
+    
+    // Liens et images
+    [/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width: 100%;">'],
+    [/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>'],
+    
+    // Code inline
+    [/`([^`]+)`/g, '<code>$1</code>'],
+    
+    // Ligne horizontale
+    [/^---+$/gm, '<hr>'],
+    [/^\*\*\*+$/gm, '<hr>'],
+    
+    // Retours à la ligne forcés
+    [/  $/gm, '<br>']
+  ];
+  
+  inlineReplacements.forEach(([regex, replacement]) => {
+    html = html.replace(regex, replacement);
+  });
+  
+  // Listes à puces
+  const bulletListRegex = /^(\s*)[-*+]\s+(.+)$/gm;
+  let inList = false;
+  let listItems = [];
+  let lastIndent = 0;
+  
+  html = html.split('\n').map(line => {
+    const bulletMatch = line.match(/^(\s*)[-*+]\s+(.+)$/);
+    if (bulletMatch) {
+      const indent = bulletMatch[1].length;
+      const content = bulletMatch[2];
+      
+      if (!inList) {
+        inList = true;
+        lastIndent = indent;
+        return `<ul><li>${content}`;
+      } else {
+        if (indent > lastIndent) {
+          lastIndent = indent;
+          return `<ul><li>${content}`;
+        } else if (indent < lastIndent) {
+          let closeTags = '</li>';
+          const levels = (lastIndent - indent) / 2;
+          for (let i = 0; i < levels; i++) {
+            closeTags += '</ul></li>';
+          }
+          lastIndent = indent;
+          return `${closeTags}<li>${content}`;
+        } else {
+          return `</li><li>${content}`;
+        }
+      }
+    } else {
+      if (inList) {
+        inList = false;
+        let closeTags = '</li>';
+        const levels = lastIndent / 2;
+        for (let i = 0; i <= levels; i++) {
+          closeTags += '</ul>';
+        }
+        lastIndent = 0;
+        return closeTags + line;
+      }
+      return line;
+    }
+  }).join('\n');
+  
+  // Fermer les listes non fermées
+  if (inList) {
+    let closeTags = '</li>';
+    const levels = lastIndent / 2;
+    for (let i = 0; i <= levels; i++) {
+      closeTags += '</ul>';
+    }
+    html += closeTags;
+  }
+  
+  // Listes numérotées
+  const numberedListRegex = /^(\s*)\d+\.\s+(.+)$/gm;
+  html = html.replace(numberedListRegex, (match, indent, content) => {
+    return `<ol><li>${content}</li></ol>`;
+  });
+  
+  // Fusionner les listes consécutives
+  html = html.replace(/<\/ol>\n<ol>/g, '\n');
+  html = html.replace(/<\/ul>\n<ul>/g, '\n');
+  
+  // Citations
+  const blockquoteRegex = /^>\s+(.+)$/gm;
+  html = html.replace(blockquoteRegex, '<blockquote>$1</blockquote>');
+  html = html.replace(/<\/blockquote>\n<blockquote>/g, '\n');
+  
+  // Paragraphes
+  html = html.split('\n\n').map(block => {
+    block = block.trim();
+    if (!block) return '';
+    
+    // Ne pas encapsuler si c'est déjà une balise HTML
+    if (block.match(/^<(?:h[1-6]|p|div|ul|ol|li|blockquote|pre|table|hr)/i)) {
+      return block;
+    }
+    
+    return `<p>${block}</p>`;
+  }).join('\n\n');
+  
+  // Décoder les entités HTML
+  html = html
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&');
+  
+  return html;
+}
+
+/**
+ * Formate le HTML avec indentation
+ */
+function formatHtml(html) {
+  // Nettoyer le HTML
+  html = html.replace(/>\s+</g, '><').trim();
+  
+  // Balises qui ne doivent pas avoir de retour à la ligne après elles
+  const inlineTags = ['a', 'span', 'strong', 'b', 'em', 'i', 'u', 'code', 'small', 'sub', 'sup', 'del', 's', 'strike'];
+  
+  // Balises auto-fermantes
+  const selfClosingTags = ['br', 'hr', 'img', 'input', 'meta', 'link'];
+  
+  let formatted = '';
+  let indent = 0;
+  let inlineContext = false;
+  
+  // Parser le HTML caractère par caractère
+  let i = 0;
+  while (i < html.length) {
+    if (html[i] === '<') {
+      // Trouver la fin de la balise
+      let tagEnd = html.indexOf('>', i);
+      if (tagEnd === -1) {
+        formatted += html.substring(i);
+        break;
+      }
+      
+      let tag = html.substring(i, tagEnd + 1);
+      let tagName = tag.match(/<\/?([a-z0-9]+)/i);
+      tagName = tagName ? tagName[1].toLowerCase() : '';
+      
+      // Déterminer si c'est une balise fermante
+      let isClosing = tag.startsWith('</');
+      let isSelfClosing = selfClosingTags.includes(tagName) || tag.endsWith('/>');
+      let isInline = inlineTags.includes(tagName);
+      
+      // Ajuster l'indentation pour les balises fermantes
+      if (isClosing && !isInline) {
+        indent = Math.max(0, indent - 1);
+      }
+      
+      // Ajouter l'indentation si ce n'est pas une balise inline
+      if (!inlineContext && formatted.length > 0 && formatted[formatted.length - 1] !== '\n') {
+        formatted += '\n';
+      }
+      
+      if (!isInline || !inlineContext) {
+        formatted += '  '.repeat(indent);
+      }
+      
+      formatted += tag;
+      
+      // Ajuster l'indentation pour les balises ouvrantes
+      if (!isClosing && !isSelfClosing && !isInline) {
+        indent++;
+      }
+      
+      // Gérer le contexte inline
+      if (isInline) {
+        inlineContext = !isClosing;
+      } else {
+        inlineContext = false;
+      }
+      
+      i = tagEnd + 1;
+    } else {
+      // Texte entre les balises
+      let nextTag = html.indexOf('<', i);
+      if (nextTag === -1) nextTag = html.length;
+      
+      let text = html.substring(i, nextTag).trim();
+      if (text) {
+        if (!inlineContext && formatted.length > 0 && formatted[formatted.length - 1] !== '\n') {
+          formatted += '\n' + '  '.repeat(indent);
+        }
+        formatted += text;
+      }
+      
+      i = nextTag;
+    }
+  }
+  
+  // Nettoyer les lignes vides multiples
+  formatted = formatted.replace(/\n\s*\n\s*\n/g, '\n\n');
+  
+  return formatted.trim();
+}
+
+/**
+ * Détecte le format d'un contenu
+ */
+function detectFormat(content) {
+  if (!content || content.length > 10000) {
+    return 'html';
+  }
+  
+  const hasHtmlTags = /<[a-z][\s\S]*>/i.test(content);
+  const hasMarkdownTable = /\|.*\|/.test(content) && /\|[\s:|-]+\|/.test(content);
+  const hasMarkdownSyntax = !hasHtmlTags && (
+    /^#{1,6}\s/m.test(content) ||
+    /\*\*[^*]+\*\*/.test(content) ||
+    /^\s*[-*+]\s+/m.test(content) ||
+    /^\d+\.\s+/m.test(content) ||
+    /^>\s+/m.test(content) ||
+    /\[([^\]]+)\]\(([^)]+)\)/.test(content) ||
+    /!\[([^\]]*)\]\(([^)]+)\)/.test(content) ||
+    hasMarkdownTable
+  );
+  
+  return hasMarkdownSyntax ? 'markdown' : 'html';
+}
+
+/**
+ * Nettoie le contenu avant la conversion
+ */
+function cleanContent(content, format) {
+  if (format === 'html') {
+    // Nettoyer les attributs style vides
+    content = content.replace(/\sstyle=""/g, '');
+    
+    // Nettoyer les spans vides
+    content = content.replace(/<span[^>]*>\s*<\/span>/g, '');
+    
+    // Normaliser les espaces
+    content = content.replace(/&nbsp;/g, ' ');
+  } else if (format === 'markdown') {
+    // Normaliser les fins de ligne
+    content = content.replace(/\r\n/g, '\n');
+    
+    // Supprimer les espaces en fin de ligne (sauf les doubles espaces pour <br>)
+    content = content.replace(/([^ \n])\s+$/gm, '$1');
+  }
+  
+  return content;
+}
+</script>
