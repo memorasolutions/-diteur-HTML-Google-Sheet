@@ -9,7 +9,8 @@
 <html>
 <head>
   <base target="_top">
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat&family=Roboto&family=Lato&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
       --primary-color: #4F46E5;
@@ -317,7 +318,6 @@
     #visualEditor table td:focus,
     #visualEditor table th:focus,
     #visualEditor table .active-cell {
-      background-color: rgba(79, 70, 229, 0.1);
       outline: 2px solid var(--primary-color);
       outline-offset: -2px;
     }
@@ -864,7 +864,7 @@
               <input type="color" id="textColorPicker">
             </label>
             <label class="color-picker" data-tooltip="Couleur de fond">
-              <span class="color-icon">🖌️</span>
+              <i class="fa-solid fa-paint-roller color-icon"></i>
               <input type="color" id="bgColorPicker">
             </label>
             <select id="fontSelect" class="font-select" data-tooltip="Police">
@@ -875,6 +875,8 @@
               <option value="Georgia">Georgia</option>
               <option value="Tahoma">Tahoma</option>
               <option value="Montserrat">Montserrat</option>
+              <option value="Roboto">Roboto</option>
+              <option value="Lato">Lato</option>
             </select>
           </div>
 
@@ -1328,13 +1330,15 @@
       
       if (command === 'createLink') {
         let defaultUrl = '';
+        let anchorEl = null;
         const sel = window.getSelection();
         if (sel.rangeCount) {
           let node = sel.anchorNode;
           if (node.nodeType === 3) node = node.parentElement;
           while (node && node !== document.getElementById('visualEditor')) {
-            if (node.tagName === 'A' && node.getAttribute('href')) {
-              defaultUrl = node.getAttribute('href');
+            if (node.tagName === 'A') {
+              anchorEl = node;
+              defaultUrl = anchorEl.getAttribute('href') || '';
               break;
             }
             node = node.parentElement;
@@ -1342,11 +1346,19 @@
         }
         value = prompt('Entrez l\'URL:', defaultUrl);
         if (!value) return;
+
+        isExecutingCommand = true;
+        if (anchorEl && (sel.isCollapsed || (anchorEl.contains(sel.anchorNode) && anchorEl.contains(sel.focusNode)))) {
+          anchorEl.setAttribute('href', value);
+        } else {
+          document.execCommand('createLink', false, value);
+        }
+        isExecutingCommand = false;
+      } else {
+        isExecutingCommand = true;
+        document.execCommand(command, false, value);
+        isExecutingCommand = false;
       }
-      
-      isExecutingCommand = true;
-      document.execCommand(command, false, value);
-      isExecutingCommand = false;
       
       // Sauvegarde immédiate sans délai
       if (currentTab === 'visual') {
@@ -1690,11 +1702,14 @@
         }
       });
 
-      const font = document.queryCommandValue('fontName');
-      if (document.getElementById('fontSelect')) {
+      const fontSelect = document.getElementById('fontSelect');
+      if (fontSelect) {
+        const font = document.queryCommandValue('fontName');
         let cleanFont = (font || '').replace(/['"]/g, '');
-        if (!cleanFont) cleanFont = 'Arial';
-        document.getElementById('fontSelect').value = cleanFont;
+        if (!cleanFont || !Array.from(fontSelect.options).some(o => o.value === cleanFont)) {
+          cleanFont = 'Arial';
+        }
+        fontSelect.value = cleanFont;
       }
     }
 
