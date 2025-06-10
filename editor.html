@@ -9,7 +9,7 @@
 <html>
 <head>
   <base target="_top">
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat&family=Roboto&family=Lato&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Roboto:wght@400;500&family=Lato:wght@400;700&family=Open+Sans:wght@400;600&family=Poppins:wght@400;600&family=Raleway:wght@400;600&family=Playfair+Display:wght@400;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     :root {
@@ -178,19 +178,26 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      width: 36px;
+      height: 36px;
     }
 
     .color-picker .color-icon {
       position: absolute;
       pointer-events: none;
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 600;
       color: var(--text-primary);
+      z-index: 1;
+    }
+
+    .color-picker svg.color-icon {
+      width: 18px;
+      height: 18px;
     }
 
     .toolbar input[type="color"],
-    .color-picker input[type="color"],
-    .toolbar select.font-select {
+    .color-picker input[type="color"] {
       width: 36px;
       height: 36px;
       padding: 0;
@@ -199,11 +206,43 @@
       border-radius: 6px;
       background: transparent;
       cursor: pointer;
+      opacity: 1;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .color-picker input[type="color"]::-webkit-color-swatch-wrapper {
+      padding: 0;
+    }
+
+    .color-picker input[type="color"]::-webkit-color-swatch {
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
     }
 
     .toolbar select.font-select {
       width: auto;
-      padding: 0 8px;
+      min-width: 120px;
+      height: 36px;
+      padding: 0 12px;
+      margin: 0;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text-primary);
+      transition: all 0.2s ease;
+    }
+
+    .toolbar select.font-select:hover {
+      border-color: var(--primary-color);
+    }
+
+    .toolbar select.font-select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
     }
 
     .toolbar .separator {
@@ -275,6 +314,7 @@
       font-size: 16px;
       line-height: 1.6;
       color: var(--text-primary);
+      font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
     }
     
     #visualEditor:focus {
@@ -302,7 +342,7 @@
     }
 
     #visualEditor table th {
-      background-color: #6ea6cf;
+      background-color: #5B9BD5;
       color: white;
       font-weight: 600;
     }
@@ -433,7 +473,7 @@
     }
 
     .table-preview th {
-      background: #6ea6cf;
+      background: #5B9BD5;
       color: white;
       font-weight: 600;
     }
@@ -564,12 +604,6 @@
       border-top-color: var(--primary-color);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
-    }
-
-    /* Navigation au clavier dans les tableaux */
-    #visualEditor table td[contenteditable="true"],
-    #visualEditor table th[contenteditable="true"] {
-      cursor: text;
     }
 
     /* Navigation au clavier dans les tableaux */
@@ -761,6 +795,10 @@
       }
     }
 
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
     .editor-container {
       animation: slideIn 0.3s ease;
     }
@@ -768,6 +806,7 @@
 </head>
 <body>
   <div id="loading" class="loading">
+    <div class="loading-spinner"></div>
     <div class="loading-text">Chargement...</div>
   </div>
   
@@ -862,22 +901,30 @@
           <div class="toolbar-group">
             <label class="color-picker" data-tooltip="Couleur du texte">
               <span class="color-icon">A</span>
-              <input type="color" id="textColorPicker">
+              <input type="color" id="textColorPicker" value="#000000">
             </label>
             <label class="color-picker" data-tooltip="Couleur de fond">
-              <i class="fa-solid fa-paint-roller color-icon"></i>
-              <input type="color" id="bgColorPicker">
+              <svg class="color-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18 4V3c0-.55-.45-1-1-1H5c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h12c.55 0 1-.45 1-1V6h1v4H9v11c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-9h8V4h-3z"/>
+              </svg>
+              <input type="color" id="bgColorPicker" value="#ffffff">
             </label>
             <select id="fontSelect" class="font-select" data-tooltip="Police">
               <option value="Arial">Arial</option>
-              <option value="Times New Roman">Times</option>
-              <option value="Courier New">Courier</option>
-              <option value="Verdana">Verdana</option>
+              <option value="Times New Roman">Times New Roman</option>
               <option value="Georgia">Georgia</option>
+              <option value="Verdana">Verdana</option>
               <option value="Tahoma">Tahoma</option>
+              <option value="Courier New">Courier New</option>
+              <option value="Helvetica">Helvetica</option>
               <option value="Montserrat">Montserrat</option>
               <option value="Roboto">Roboto</option>
               <option value="Lato">Lato</option>
+              <option value="Open Sans">Open Sans</option>
+              <option value="Poppins">Poppins</option>
+              <option value="Raleway">Raleway</option>
+              <option value="Playfair Display">Playfair Display</option>
+              <option value="Merriweather">Merriweather</option>
             </select>
           </div>
 
@@ -1089,35 +1136,64 @@
       const visual = document.getElementById('visualEditor');
       const code = document.getElementById('htmlEditor');
 
+      // Écouteurs pour la mise à jour de l'état de la toolbar
       visual.addEventListener('click', handleSelectionChange);
       visual.addEventListener('keyup', handleSelectionChange);
       visual.addEventListener('mouseup', handleSelectionChange);
       visual.addEventListener('focus', handleSelectionChange);
-      document.addEventListener('selectionchange', handleSelectionChange);
+      visual.addEventListener('blur', handleSelectionChange);
+      document.addEventListener('selectionchange', () => {
+        if (currentTab === 'visual') {
+          handleSelectionChange();
+        }
+      });
 
       // Garder les deux vues synchronisées
       visual.addEventListener('input', () => {
-        syncContent();
-        handleSelectionChange();
+        if (currentTab === 'visual') {
+          syncContent();
+          handleSelectionChange();
+        }
       });
-      code.addEventListener('input', syncContent);
+      
+      code.addEventListener('input', () => {
+        if (currentTab === 'html') {
+          syncContent();
+        }
+      });
 
       const textPicker = document.getElementById('textColorPicker');
       const bgPicker = document.getElementById('bgColorPicker');
 
       textPicker.addEventListener('input', e => {
-        setTextColor(e.target.value);
-        updateColorIcon('textColorPicker');
+        if (currentTab === 'visual') {
+          setTextColor(e.target.value);
+          updateColorIcon('textColorPicker');
+        }
       });
+      
       bgPicker.addEventListener('input', e => {
-        setCellBackground(e.target.value);
-        updateColorIcon('bgColorPicker');
+        if (currentTab === 'visual') {
+          setCellBackground(e.target.value);
+          updateColorIcon('bgColorPicker');
+        }
       });
 
+      // Initialisation des couleurs
       updateColorIcon('textColorPicker');
       updateColorIcon('bgColorPicker');
-      handleSelectionChange();
-      document.getElementById('fontSelect').addEventListener('change', e => setFont(e.target.value));
+      
+      // Mise à jour initiale de l'état de la toolbar
+      setTimeout(() => {
+        handleSelectionChange();
+        updateToolbarState();
+      }, 100);
+      
+      document.getElementById('fontSelect').addEventListener('change', e => {
+        if (currentTab === 'visual') {
+          setFont(e.target.value);
+        }
+      });
     };
     
     function handleKeyPress(e) {
@@ -1236,6 +1312,11 @@
         document.getElementById('htmlEditor').value = formatHtml(content);
       }
       
+      // Définir la police par défaut si le contenu est vide
+      if (!content.trim()) {
+        document.getElementById('visualEditor').style.fontFamily = 'Arial, sans-serif';
+      }
+      
       // Rendre les cellules éditables en une seule passe
       makeTableCellsEditable();
       
@@ -1244,6 +1325,12 @@
         saveState();
         initializeObserver();
         document.getElementById('visualEditor').focus();
+        
+        // Mettre à jour l'état initial de la toolbar
+        setTimeout(() => {
+          handleSelectionChange();
+          updateToolbarState();
+        }, 100);
       });
     }
     
@@ -1276,22 +1363,12 @@
       });
     }
     
-    function makeTableCellsEditable() {
-      const tables = document.querySelectorAll('#visualEditor table');
-      tables.forEach(table => {
-        const cells = table.querySelectorAll('td, th');
-        cells.forEach(cell => {
-          cell.setAttribute('contenteditable', 'true');
-        });
-      });
-    }
-    
     function showError(error) {
       alert('Erreur: ' + error);
     }
     
     function switchTab(tab, event) {
-      // Synchroniser le contenu avant de changer d'onglet - immédiatement
+      // Synchroniser le contenu avant de changer d'onglet
       if (currentTab === 'visual') {
         const html = document.getElementById('visualEditor').innerHTML;
         document.getElementById('htmlEditor').value = formatHtml(html);
@@ -1318,7 +1395,23 @@
       }
       
       currentTab = tab;
-      handleSelectionChange();
+      
+      // Si on passe à l'onglet visuel, mettre à jour l'état de la toolbar
+      if (tab === 'visual') {
+        setTimeout(() => {
+          handleSelectionChange();
+          updateToolbarState();
+        }, 50);
+      }
+      
+      // Si on passe à l'onglet code, s'assurer que le code est bien formaté
+      if (tab === 'html') {
+        const currentHtml = document.getElementById('htmlEditor').value;
+        if (currentHtml && !currentHtml.includes('\n')) {
+          // Si le HTML n'est pas formaté, le formater
+          document.getElementById('htmlEditor').value = formatHtml(currentHtml);
+        }
+      }
     }
     
     let syncTimer;
@@ -1328,12 +1421,18 @@
       syncTimer = setTimeout(() => {
         if (currentTab === 'visual') {
           const html = document.getElementById('visualEditor').innerHTML;
-          document.getElementById('htmlEditor').value = formatHtml(html);
+          const formattedHtml = formatHtml(html);
+          document.getElementById('htmlEditor').value = formattedHtml;
         } else if (currentTab === 'html') {
           const html = document.getElementById('htmlEditor').value;
           document.getElementById('visualEditor').innerHTML = html;
           // Rendre les cellules éditables si des tableaux ont été ajoutés via le code
           makeTableCellsEditable();
+          // Mettre à jour l'état de la toolbar après modification du HTML
+          setTimeout(() => {
+            handleSelectionChange();
+            updateToolbarState();
+          }, 50);
         }
       }, 50);  // Réduit de 100ms à 50ms pour plus de réactivité
     }
@@ -1347,9 +1446,12 @@
         let defaultUrl = '';
         let anchorEl = null;
         const sel = window.getSelection();
+        
         if (sel.rangeCount) {
           let node = sel.anchorNode;
           if (node.nodeType === 3) node = node.parentElement;
+          
+          // Chercher un lien parent
           while (node && node !== document.getElementById('visualEditor')) {
             if (node.tagName === 'A') {
               anchorEl = node;
@@ -1358,10 +1460,20 @@
             }
             node = node.parentElement;
           }
+          
+          // Si pas de lien parent, chercher dans la sélection
+          if (!defaultUrl && !sel.isCollapsed) {
+            const range = sel.getRangeAt(0);
+            const links = range.cloneContents().querySelectorAll('a');
+            if (links.length > 0) {
+              defaultUrl = links[0].getAttribute('href') || '';
+            }
+          }
         }
+        
         value = prompt('Entrez l\'URL:', defaultUrl);
-        if (!value) return;
-
+        if (value === null) return; // Annulé
+        
         isExecutingCommand = true;
         if (anchorEl && (sel.isCollapsed || (anchorEl.contains(sel.anchorNode) && anchorEl.contains(sel.focusNode)))) {
           anchorEl.setAttribute('href', value);
@@ -1378,6 +1490,7 @@
       // Sauvegarde immédiate sans délai
       if (currentTab === 'visual') {
         saveState();
+        updateToolbarState();
       }
     }
 
@@ -1404,12 +1517,26 @@
       if (!input) return;
       const icon = input.previousElementSibling;
       if (!icon) return;
+      
+      // Obtenir la couleur directement depuis l'input
       const color = input.value;
-      const r = parseInt(color.substr(1, 2), 16);
-      const g = parseInt(color.substr(3, 2), 16);
-      const b = parseInt(color.substr(5, 2), 16);
+      
+      // Convertir la couleur hexadécimale en RGB
+      let r, g, b;
+      if (color.startsWith('#')) {
+        r = parseInt(color.substr(1, 2), 16);
+        g = parseInt(color.substr(3, 2), 16);
+        b = parseInt(color.substr(5, 2), 16);
+      } else {
+        // Couleur par défaut si non valide
+        r = g = b = 0;
+      }
+      
+      // Calculer la luminosité
       const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-      icon.style.color = brightness > 128 ? '#000' : '#fff';
+      
+      // Définir la couleur de l'icône en fonction de la luminosité
+      icon.style.color = brightness > 128 ? '#000000' : '#FFFFFF';
     }
 
     function htmlToMarkdown(html) {
@@ -1497,15 +1624,89 @@
     }
 
     function formatHtml(html) {
-      const lines = html.replace(/>\s+</g, '><').split(/(?=<)/g);
+      // Nettoyer le HTML
+      html = html.replace(/>\s+</g, '><').trim();
+      
+      // Balises qui ne doivent pas avoir de retour à la ligne après elles
+      const inlineTags = ['a', 'span', 'strong', 'b', 'em', 'i', 'u', 'code', 'small', 'sub', 'sup'];
+      
+      // Balises auto-fermantes
+      const selfClosingTags = ['br', 'hr', 'img', 'input', 'meta', 'link'];
+      
+      let formatted = '';
       let indent = 0;
-      const formatted = lines.map(line => {
-        if (/^<\//.test(line.trim())) indent -= 1;
-        const result = '  '.repeat(indent) + line.trim();
-        if (/^<[^!\/].*[^/]?>$/.test(line.trim())) indent += 1;
-        return result;
-      });
-      return formatted.join('\n');
+      let inlineContext = false;
+      
+      // Parser le HTML caractère par caractère
+      let i = 0;
+      while (i < html.length) {
+        if (html[i] === '<') {
+          // Trouver la fin de la balise
+          let tagEnd = html.indexOf('>', i);
+          if (tagEnd === -1) {
+            formatted += html.substring(i);
+            break;
+          }
+          
+          let tag = html.substring(i, tagEnd + 1);
+          let tagName = tag.match(/<\/?([a-z0-9]+)/i);
+          tagName = tagName ? tagName[1].toLowerCase() : '';
+          
+          // Déterminer si c'est une balise fermante
+          let isClosing = tag.startsWith('</');
+          let isSelfClosing = selfClosingTags.includes(tagName) || tag.endsWith('/>');
+          let isInline = inlineTags.includes(tagName);
+          
+          // Ajuster l'indentation pour les balises fermantes
+          if (isClosing && !isInline) {
+            indent = Math.max(0, indent - 1);
+          }
+          
+          // Ajouter l'indentation si ce n'est pas une balise inline
+          if (!inlineContext && formatted.length > 0 && formatted[formatted.length - 1] !== '\n') {
+            formatted += '\n';
+          }
+          
+          if (!isInline || !inlineContext) {
+            formatted += '  '.repeat(indent);
+          }
+          
+          formatted += tag;
+          
+          // Ajuster l'indentation pour les balises ouvrantes
+          if (!isClosing && !isSelfClosing && !isInline) {
+            indent++;
+          }
+          
+          // Gérer le contexte inline
+          if (isInline) {
+            inlineContext = !isClosing;
+          } else {
+            inlineContext = false;
+          }
+          
+          i = tagEnd + 1;
+        } else {
+          // Texte entre les balises
+          let nextTag = html.indexOf('<', i);
+          if (nextTag === -1) nextTag = html.length;
+          
+          let text = html.substring(i, nextTag).trim();
+          if (text) {
+            if (!inlineContext && formatted.length > 0 && formatted[formatted.length - 1] !== '\n') {
+              formatted += '\n' + '  '.repeat(indent);
+            }
+            formatted += text;
+          }
+          
+          i = nextTag;
+        }
+      }
+      
+      // Nettoyer les lignes vides multiples
+      formatted = formatted.replace(/\n\s*\n\s*\n/g, '\n\n');
+      
+      return formatted.trim();
     }
     
     function markdownToHtml(markdown) {
@@ -1669,8 +1870,10 @@
       const textPicker = document.getElementById('textColorPicker');
       const bgPicker = document.getElementById('bgColorPicker');
 
+      // Obtenir l'élément de référence
       const cells = getSelectedCells();
       let refEl = cells.length ? cells[0] : getParentCell();
+      
       if (!refEl) {
         const sel = window.getSelection();
         if (sel.rangeCount) {
@@ -1679,63 +1882,124 @@
         }
       }
 
-      if (refEl) {
+      if (refEl && refEl.nodeType === 1) {
         const styles = window.getComputedStyle(refEl);
+        
+        // Mettre à jour le sélecteur de couleur du texte
         if (textPicker) {
-          const color = refEl.style.color || styles.color;
-          textPicker.value = rgbToHex(color);
+          let textColor = styles.color;
+          // Convertir en hex
+          textPicker.value = rgbToHex(textColor);
           updateColorIcon('textColorPicker');
         }
+        
+        // Mettre à jour le sélecteur de couleur de fond
         if (bgPicker) {
-          const bg = refEl.style.backgroundColor || styles.backgroundColor;
-          bgPicker.value = rgbToHex(bg);
+          let bgColor = styles.backgroundColor;
+          // Si c'est transparent, utiliser blanc par défaut
+          if (bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent') {
+            bgColor = 'rgb(255, 255, 255)';
+          }
+          bgPicker.value = rgbToHex(bgColor);
           updateColorIcon('bgColorPicker');
         }
       }
 
-      const commands = ['bold', 'italic', 'underline'];
-      commands.forEach(cmd => {
-        const btn = document.querySelector(`[onclick="formatText('${cmd}')"]`);
-        if (btn) {
-          if (document.queryCommandState(cmd)) {
-            btn.classList.add('active');
-          } else {
+      // Mettre à jour l'état des boutons de formatage
+      const commands = {
+        'bold': 'bold',
+        'italic': 'italic', 
+        'underline': 'underline',
+        'insertUnorderedList': 'insertUnorderedList',
+        'insertOrderedList': 'insertOrderedList',
+        'justifyLeft': 'justifyLeft',
+        'justifyCenter': 'justifyCenter',
+        'justifyRight': 'justifyRight'
+      };
+      
+      Object.entries(commands).forEach(([cmd, queryCmd]) => {
+        const btns = document.querySelectorAll(`[onclick*="formatText('${cmd}')"]`);
+        btns.forEach(btn => {
+          try {
+            if (document.queryCommandState(queryCmd)) {
+              btn.classList.add('active');
+            } else {
+              btn.classList.remove('active');
+            }
+          } catch (e) {
             btn.classList.remove('active');
           }
-        }
+        });
       });
 
-      const format = (document.queryCommandValue('formatBlock') || '').toLowerCase();
-      document.querySelectorAll('.heading-btn').forEach(btn => {
-        const match = btn.getAttribute('onclick').match(/'([^']+)'/);
-        if (match) {
-          if (match[1].toLowerCase() === format) {
-            btn.classList.add('active');
-          } else {
-            btn.classList.remove('active');
+      // Mettre à jour les boutons de titre
+      try {
+        const format = document.queryCommandValue('formatBlock').toLowerCase();
+        document.querySelectorAll('.heading-btn').forEach(btn => {
+          const onclickAttr = btn.getAttribute('onclick');
+          if (onclickAttr) {
+            const match = onclickAttr.match(/'([^']+)'/g);
+            if (match && match.length >= 2) {
+              const tagName = match[1].replace(/'/g, '').toLowerCase();
+              if (tagName === format || (tagName === 'p' && (format === 'div' || format === ''))) {
+                btn.classList.add('active');
+              } else {
+                btn.classList.remove('active');
+              }
+            }
           }
-        }
-      });
+        });
+      } catch (e) {
+        // Ignorer les erreurs
+      }
 
+      // Mettre à jour le sélecteur de police
       const fontSelect = document.getElementById('fontSelect');
-      if (fontSelect) {
-        const font = document.queryCommandValue('fontName');
-        let cleanFont = (font || '').replace(/['"]/g, '');
-        if (!cleanFont || !Array.from(fontSelect.options).some(o => o.value === cleanFont)) {
-          cleanFont = 'Arial';
+      if (fontSelect && refEl) {
+        const styles = window.getComputedStyle(refEl);
+        let fontFamily = styles.fontFamily;
+        
+        // Nettoyer le nom de la police
+        fontFamily = fontFamily.replace(/['"]/g, '').split(',')[0].trim();
+        
+        // Vérifier si la police existe dans la liste
+        let fontFound = false;
+        for (let option of fontSelect.options) {
+          if (option.value.toLowerCase() === fontFamily.toLowerCase()) {
+            fontSelect.value = option.value;
+            fontFound = true;
+            break;
+          }
         }
-        fontSelect.value = cleanFont;
+        
+        // Si la police n'est pas trouvée, utiliser Arial par défaut
+        if (!fontFound) {
+          fontSelect.value = 'Arial';
+        }
       }
     }
 
-    function rgbToHex(rgb) {
-      if (!rgb) return '#000000';
-      if (rgb === 'transparent') return '#ffffff';
-      const result = rgb.match(/\d+/g);
-      if (!result) return '#000000';
+    function rgbToHex(color) {
+      if (!color) return '#000000';
+      
+      // Si c'est déjà en hexadécimal
+      if (color.startsWith('#')) {
+        return color.length === 7 ? color : '#000000';
+      }
+      
+      // Si c'est transparent
+      if (color === 'transparent' || color === 'rgba(0, 0, 0, 0)') {
+        return '#ffffff';
+      }
+      
+      // Extraire les valeurs RGB
+      const result = color.match(/\d+/g);
+      if (!result || result.length < 3) return '#000000';
+      
       const r = parseInt(result[0]).toString(16).padStart(2, '0');
       const g = parseInt(result[1]).toString(16).padStart(2, '0');
       const b = parseInt(result[2]).toString(16).padStart(2, '0');
+      
       return `#${r}${g}${b}`;
     }
 
@@ -1744,12 +2008,12 @@
       const cols = parseInt(document.getElementById('tableCols').value) || 3;
       const preview = document.getElementById('tablePreview');
 
-      let html = '<table style="width: 95.4045%; border-collapse: collapse; border: 2px solid #6ea6cf; text-align: center; border-radius: 8px; overflow: hidden;">';
+      let html = '<table style="width: 95.4045%; border-collapse: collapse; border: 2px solid #5B9BD5; text-align: center; border-radius: 8px; overflow: hidden;">';
 
       // En-tête
-      html += '<tr style="background-color: #6ea6cf; color: white;">';
+      html += '<tr style="background-color: #5B9BD5; color: white;">';
       for (let j = 0; j < cols; j++) {
-        html += `<th style="border: 1px solid #6ea6cf; padding: 10px; resize: both; overflow: auto; border-radius: 4px;">En-tête ${j + 1}</th>`;
+        html += `<th style="border: 1px solid #5B9BD5; padding: 10px; resize: both; overflow: auto; border-radius: 4px;">En-tête ${j + 1}</th>`;
       }
       html += '</tr>';
 
@@ -1788,10 +2052,10 @@
       const rows = parseInt(document.getElementById('tableRows').value) || 3;
       const cols = parseInt(document.getElementById('tableCols').value) || 3;
       
-      let html = '<table style="width: 95.4045%; border-collapse: collapse; border: 2px solid #6ea6cf; text-align: center; border-radius: 8px; overflow: hidden;">';
-      html += '<thead><tr style="background-color: #6ea6cf; color: white;">';
+      let html = '<table style="width: 95.4045%; border-collapse: collapse; border: 2px solid #5B9BD5; text-align: center; border-radius: 8px; overflow: hidden;">';
+      html += '<thead><tr style="background-color: #5B9BD5; color: white;">';
       for (let j = 0; j < cols; j++) {
-        html += `<th contenteditable="true" style="border: 1px solid #6ea6cf; padding: 10px; resize: both; overflow: auto; border-radius: 4px;">En-tête ${j + 1}</th>`;
+        html += `<th contenteditable="true" style="border: 1px solid #5B9BD5; padding: 10px; resize: both; overflow: auto; border-radius: 4px;">En-tête ${j + 1}</th>`;
       }
       html += '</tr></thead><tbody>';
       
