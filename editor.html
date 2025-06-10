@@ -171,6 +171,23 @@
       font-size: 14px;
     }
 
+    .toolbar input[type="color"],
+    .toolbar select.font-select {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      margin: 0;
+      border: none;
+      border-radius: 6px;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .toolbar select.font-select {
+      width: auto;
+      padding: 0 8px;
+    }
+
     .toolbar .separator {
       width: 1px;
       height: 24px;
@@ -262,6 +279,8 @@
       border: 1px solid var(--border-color);
       position: relative;
       transition: all 0.2s ease;
+      resize: both;
+      overflow: auto;
     }
 
     #visualEditor table th {
@@ -821,6 +840,19 @@
 
           <div class="separator"></div>
 
+          <div class="toolbar-group">
+            <input type="color" id="textColorPicker" data-tooltip="Couleur du texte">
+            <input type="color" id="bgColorPicker" data-tooltip="Couleur de fond">
+            <select id="fontSelect" class="font-select" data-tooltip="Police">
+              <option value="Arial">Arial</option>
+              <option value="Times New Roman">Times</option>
+              <option value="Courier New">Courier</option>
+              <option value="Verdana">Verdana</option>
+            </select>
+          </div>
+
+          <div class="separator"></div>
+
           <div class="toolbar-group" id="tableTools">
             <button onclick="showTableDialog()" data-tooltip="Insérer un tableau">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -1021,10 +1053,14 @@
 
       // Ajouter les écouteurs pour undo/redo
       document.addEventListener('keydown', handleKeyPress);
-      
+
       // Ajouter un écouteur pour détecter quand on est dans un tableau
       document.getElementById('visualEditor').addEventListener('click', checkTableFocus);
       document.getElementById('visualEditor').addEventListener('keyup', checkTableFocus);
+
+      document.getElementById('textColorPicker').addEventListener('input', e => setTextColor(e.target.value));
+      document.getElementById('bgColorPicker').addEventListener('input', e => setCellBackground(e.target.value));
+      document.getElementById('fontSelect').addEventListener('change', e => setFont(e.target.value));
     };
     
     function handleKeyPress(e) {
@@ -1261,7 +1297,24 @@
         saveState();
       }
     }
-    
+
+    function setTextColor(color) {
+      formatText('foreColor', color);
+    }
+
+    function setCellBackground(color) {
+      const cell = getParentCell();
+      if (cell) {
+        saveState();
+        cell.style.backgroundColor = color;
+        saveState();
+      }
+    }
+
+    function setFont(font) {
+      formatText('fontName', font);
+    }
+
     function htmlToMarkdown(html) {
       // Retour rapide si pas de HTML
       if (!html || !html.includes('<')) {
@@ -1508,7 +1561,7 @@
       // En-tête
       html += '<tr style="background-color: #6ea6cf; color: white;">';
       for (let j = 0; j < cols; j++) {
-        html += `<th style="border: 1px solid #6ea6cf; padding: 10px;">En-tête ${j + 1}</th>`;
+        html += `<th style="border: 1px solid #6ea6cf; padding: 10px; resize: both; overflow: auto; border-radius: 4px;">En-tête ${j + 1}</th>`;
       }
       html += '</tr>';
 
@@ -1516,7 +1569,7 @@
       for (let i = 0; i < rows - 1; i++) {
         html += '<tr>';
         for (let j = 0; j < cols; j++) {
-          html += '<td style="border: 1px dotted #303030; padding: 15px; background-color: #f0f0f0;">Cellule</td>';
+          html += '<td style="border: 1px dotted #303030; padding: 15px; background-color: #f0f0f0; resize: both; overflow: auto; border-radius: 4px;">Cellule</td>';
         }
         html += '</tr>';
       }
@@ -1550,14 +1603,14 @@
       let html = '<table style="width: 95.4045%; border-collapse: collapse; border: 2px solid #6ea6cf; text-align: center; border-radius: 8px; overflow: hidden;">';
       html += '<thead><tr style="background-color: #6ea6cf; color: white;">';
       for (let j = 0; j < cols; j++) {
-        html += `<th contenteditable="true" style="border: 1px solid #6ea6cf; padding: 10px;">En-tête ${j + 1}</th>`;
+        html += `<th contenteditable="true" style="border: 1px solid #6ea6cf; padding: 10px; resize: both; overflow: auto; border-radius: 4px;">En-tête ${j + 1}</th>`;
       }
       html += '</tr></thead><tbody>';
       
       for (let i = 0; i < rows - 1; i++) {
         html += '<tr>';
         for (let j = 0; j < cols; j++) {
-          html += '<td contenteditable="true" style="border: 1px dotted #303030; padding: 15px; background-color: #f0f0f0;">Cellule</td>';
+          html += '<td contenteditable="true" style="border: 1px dotted #303030; padding: 15px; background-color: #f0f0f0; resize: both; overflow: auto; border-radius: 4px;">Cellule</td>';
         }
         html += '</tr>';
       }
