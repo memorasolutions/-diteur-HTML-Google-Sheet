@@ -9,6 +9,7 @@
 <html>
 <head>
   <base target="_top">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat&display=swap" rel="stylesheet">
   <style>
     :root {
       --primary-color: #4F46E5;
@@ -34,7 +35,7 @@
     body {
       margin: 0;
       padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
       color: var(--text-primary);
       background: #FAFAFA;
       overflow: hidden;
@@ -863,7 +864,7 @@
               <input type="color" id="textColorPicker">
             </label>
             <label class="color-picker" data-tooltip="Couleur de fond">
-              <span class="color-icon">▇</span>
+              <span class="color-icon">🖌️</span>
               <input type="color" id="bgColorPicker">
             </label>
             <select id="fontSelect" class="font-select" data-tooltip="Police">
@@ -871,6 +872,9 @@
               <option value="Times New Roman">Times</option>
               <option value="Courier New">Courier</option>
               <option value="Verdana">Verdana</option>
+              <option value="Georgia">Georgia</option>
+              <option value="Tahoma">Tahoma</option>
+              <option value="Montserrat">Montserrat</option>
             </select>
           </div>
 
@@ -1210,10 +1214,10 @@
       if (detectedFormat === 'markdown') {
         const html = markdownToHtml(content);
         document.getElementById('visualEditor').innerHTML = html;
-        document.getElementById('htmlEditor').value = html;
+        document.getElementById('htmlEditor').value = formatHtml(html);
       } else {
         document.getElementById('visualEditor').innerHTML = content;
-        document.getElementById('htmlEditor').value = content;
+        document.getElementById('htmlEditor').value = formatHtml(content);
       }
       
       // Rendre les cellules éditables en une seule passe
@@ -1273,9 +1277,11 @@
     function switchTab(tab, event) {
       // Synchroniser le contenu avant de changer d'onglet - immédiatement
       if (currentTab === 'visual') {
-        document.getElementById('htmlEditor').value = document.getElementById('visualEditor').innerHTML;
+        const html = document.getElementById('visualEditor').innerHTML;
+        document.getElementById('htmlEditor').value = formatHtml(html);
       } else if (currentTab === 'html') {
-        document.getElementById('visualEditor').innerHTML = document.getElementById('htmlEditor').value;
+        const html = document.getElementById('htmlEditor').value;
+        document.getElementById('visualEditor').innerHTML = html;
         makeTableCellsEditable();
       }
       
@@ -1305,7 +1311,7 @@
       syncTimer = setTimeout(() => {
         if (currentTab === 'visual') {
           const html = document.getElementById('visualEditor').innerHTML;
-          document.getElementById('htmlEditor').value = html;
+          document.getElementById('htmlEditor').value = formatHtml(html);
         } else if (currentTab === 'html') {
           const html = document.getElementById('htmlEditor').value;
           document.getElementById('visualEditor').innerHTML = html;
@@ -1321,7 +1327,20 @@
       }
       
       if (command === 'createLink') {
-        value = prompt('Entrez l\'URL:');
+        let defaultUrl = '';
+        const sel = window.getSelection();
+        if (sel.rangeCount) {
+          let node = sel.anchorNode;
+          if (node.nodeType === 3) node = node.parentElement;
+          while (node && node !== document.getElementById('visualEditor')) {
+            if (node.tagName === 'A' && node.getAttribute('href')) {
+              defaultUrl = node.getAttribute('href');
+              break;
+            }
+            node = node.parentElement;
+          }
+        }
+        value = prompt('Entrez l\'URL:', defaultUrl);
         if (!value) return;
       }
       
@@ -1448,6 +1467,18 @@
       
       // Nettoyage final
       return md.replace(/\n{3,}/g, '\n\n').trim();
+    }
+
+    function formatHtml(html) {
+      const lines = html.replace(/>\s+</g, '><').split(/(?=<)/g);
+      let indent = 0;
+      const formatted = lines.map(line => {
+        if (/^<\//.test(line.trim())) indent -= 1;
+        const result = '  '.repeat(indent) + line.trim();
+        if (/^<[^!\/].*[^/]?>$/.test(line.trim())) indent += 1;
+        return result;
+      });
+      return formatted.join('\n');
     }
     
     function markdownToHtml(markdown) {
@@ -1624,11 +1655,13 @@
       if (refEl) {
         const styles = window.getComputedStyle(refEl);
         if (textPicker) {
-          textPicker.value = rgbToHex(styles.color);
+          const color = refEl.style.color || styles.color;
+          textPicker.value = rgbToHex(color);
           updateColorIcon('textColorPicker');
         }
         if (bgPicker) {
-          bgPicker.value = rgbToHex(styles.backgroundColor);
+          const bg = refEl.style.backgroundColor || styles.backgroundColor;
+          bgPicker.value = rgbToHex(bg);
           updateColorIcon('bgColorPicker');
         }
       }
@@ -1658,8 +1691,9 @@
       });
 
       const font = document.queryCommandValue('fontName');
-      if (font && document.getElementById('fontSelect')) {
-        const cleanFont = font.replace(/['"]/g, '');
+      if (document.getElementById('fontSelect')) {
+        let cleanFont = (font || '').replace(/['"]/g, '');
+        if (!cleanFont) cleanFont = 'Arial';
         document.getElementById('fontSelect').value = cleanFont;
       }
     }
