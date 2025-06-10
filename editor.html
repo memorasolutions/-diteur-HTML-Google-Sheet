@@ -1078,8 +1078,9 @@
       document.addEventListener('keydown', handleKeyPress);
 
       // Ajouter un écouteur pour détecter quand on est dans un tableau
-      document.getElementById('visualEditor').addEventListener('click', checkTableFocus);
-      document.getElementById('visualEditor').addEventListener('keyup', checkTableFocus);
+      document.getElementById('visualEditor').addEventListener('click', handleSelectionChange);
+      document.getElementById('visualEditor').addEventListener('keyup', handleSelectionChange);
+      document.addEventListener('selectionchange', handleSelectionChange);
 
       const textPicker = document.getElementById('textColorPicker');
       const bgPicker = document.getElementById('bgColorPicker');
@@ -1095,6 +1096,7 @@
 
       updateColorIcon('textColorPicker');
       updateColorIcon('bgColorPicker');
+      handleSelectionChange();
       document.getElementById('fontSelect').addEventListener('change', e => setFont(e.target.value));
     };
     
@@ -1598,6 +1600,79 @@
           });
         }
       }
+    }
+
+    function handleSelectionChange() {
+      checkTableFocus();
+      updateToolbarState();
+    }
+
+    function updateToolbarState() {
+      const textPicker = document.getElementById('textColorPicker');
+      const bgPicker = document.getElementById('bgColorPicker');
+
+      const cells = getSelectedCells();
+      let refEl = cells.length ? cells[0] : getParentCell();
+      if (!refEl) {
+        const sel = window.getSelection();
+        if (sel.rangeCount) {
+          refEl = sel.getRangeAt(0).startContainer;
+          if (refEl.nodeType === 3) refEl = refEl.parentElement;
+        }
+      }
+
+      if (refEl) {
+        const styles = window.getComputedStyle(refEl);
+        if (textPicker) {
+          textPicker.value = rgbToHex(styles.color);
+          updateColorIcon('textColorPicker');
+        }
+        if (bgPicker) {
+          bgPicker.value = rgbToHex(styles.backgroundColor);
+          updateColorIcon('bgColorPicker');
+        }
+      }
+
+      const commands = ['bold', 'italic', 'underline'];
+      commands.forEach(cmd => {
+        const btn = document.querySelector(`[onclick="formatText('${cmd}')"]`);
+        if (btn) {
+          if (document.queryCommandState(cmd)) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        }
+      });
+
+      const format = (document.queryCommandValue('formatBlock') || '').toLowerCase();
+      document.querySelectorAll('.heading-btn').forEach(btn => {
+        const match = btn.getAttribute('onclick').match(/'([^']+)'/);
+        if (match) {
+          if (match[1].toLowerCase() === format) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        }
+      });
+
+      const font = document.queryCommandValue('fontName');
+      if (font && document.getElementById('fontSelect')) {
+        const cleanFont = font.replace(/['"]/g, '');
+        document.getElementById('fontSelect').value = cleanFont;
+      }
+    }
+
+    function rgbToHex(rgb) {
+      if (!rgb) return '#000000';
+      if (rgb === 'transparent') return '#ffffff';
+      const result = rgb.match(/\d+/g);
+      if (!result) return '#000000';
+      const r = parseInt(result[0]).toString(16).padStart(2, '0');
+      const g = parseInt(result[1]).toString(16).padStart(2, '0');
+      const b = parseInt(result[2]).toString(16).padStart(2, '0');
+      return `#${r}${g}${b}`;
     }
 
     function updateTablePreview() {
