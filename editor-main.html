@@ -1,0 +1,438 @@
+<script>
+// editor-main.js - Script principal de l'éditeur
+
+let undoStack = [];
+let redoStack = [];
+let maxUndoSteps = 50;
+let isExecutingCommand = false;
+
+// Initialisation
+window.onload = function() {
+  loadContent(cellData);
+
+  // Ajouter les écouteurs pour undo/redo
+  document.addEventListener('keydown', handleKeyPress);
+
+  // Ajouter un écouteur pour détecter quand on est dans un tableau
+  const visual = document.getElementById('visualEditor');
+  const code = document.getElementById('htmlEditor');
+
+  // Écouteurs pour la mise à jour de l'état de la toolbar
+  visual.addEventListener('click', handleSelectionChange);
+  visual.addEventListener('keyup', handleSelectionChange);
+  visual.addEventListener('mouseup', handleSelectionChange);
+  visual.addEventListener('focus', handleSelectionChange);
+  visual.addEventListener('blur', handleSelectionChange);
+  document.addEventListener('selectionchange', () => {
+    if (currentTab === 'visual') {
+      handleSelectionChange();
+    }
+  });
+
+  // Garder les deux vues synchronisées
+  visual.addEventListener('input', () => {
+    if (currentTab === 'visual') {
+      syncContent();
+      handleSelectionChange();
+    }
+  });
+  
+  code.addEventListener('input', () => {
+    if (currentTab === 'html') {
+      syncContent();
+    }
+  });
+
+  // Initialiser les color pickers
+  initializeColorPickers();
+  
+  // Forcer l'initialisation des couleurs après un court délai
+  setTimeout(() => {
+    updateColorDisplay('textColorPicker', '#000000');
+    updateColorDisplay('bgColorPicker', '#ffffff');
+    updateToolbarState();
+  }, 100);
+  
+  // Initialiser le sélecteur de police
+  document.getElementById('fontSelect').addEventListener('change', e => {
+    if (currentTab === 'visual') {
+      setFont(e.target.value);
+    }
+  });
+
+  // Initialiser le sélecteur de taille
+  document.getElementById('fontSizeSelect').addEventListener('change', e => {
+    if (currentTab === 'visual') {
+      formatText('fontSize', e.target.value);
+    }
+  });
+
+  // Charger les templates
+  loadTemplates();
+};
+
+function handleKeyPress(e) {
+  // Ctrl/Cmd + Z pour annuler
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    e.preventDefault();
+    undo();
+  }
+  // Ctrl/Cmd + Y ou Ctrl/Cmd + Shift + Z pour refaire
+  else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+    e.preventDefault();
+    redo();
+  }
+  // Ctrl/Cmd + S pour sauvegarder
+  else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    saveContent();
+  }
+}
+
+function saveState() {
+  if (isExecutingCommand) return;
+  
+  const content = document.getElementById('visualEditor').innerHTML;
+  
+  // Ne pas sauvegarder si c'est le même contenu que le dernier état
+  if (undoStack.length > 0 && undoStack[undoStack.length - 1] === content) {
+    return;
+  }
+  
+  undoStack.push(content);
+  
+  // Limiter la taille de la pile
+  if (undoStack.length > maxUndoSteps) {
+    undoStack.shift();
+  }
+  
+  // Vider la pile de redo car on a fait une nouvelle action
+  redoStack = [];
+}
+
+function undo() {
+  if (undoStack.length > 1) {
+    isExecutingCommand = true;
+    
+    // Sauvegarder l'état actuel dans redo
+    const currentState = undoStack.pop();
+    redoStack.push(currentState);
+    
+    // Restaurer l'état précédent
+    const previousState = undoStack[undoStack.length - 1];
+    document.getElementById('visualEditor').innerHTML = previousState;
+    
+    // Synchroniser avec l'onglet Code
+    if (currentTab === 'visual') {
+      document.getElementById('htmlEditor').value = previousState;
+    }
+    
+    // Rendre les cellules éditables
+    makeTableCellsEditable();
+    
+    setTimeout(() => { isExecutingCommand = false; }, 100);
+  }
+}
+
+function redo() {
+  if (redoStack.length > 0) {
+    isExecutingCommand = true;
+    
+    const stateToRestore = redoStack.pop();
+    undoStack.push(stateToRestore);
+    document.getElementById('visualEditor').innerHTML = stateToRestore;
+    
+    // Synchroniser avec l'onglet Code
+    if (currentTab === 'visual') {
+      document.getElementById('htmlEditor').value = stateToRestore;
+    }
+    
+    // Rendre les cellules éditables
+    makeTableCellsEditable();
+    
+    setTimeout(() => { isExecutingCommand = false; }, 100);
+  }
+}
+
+function loadContent(data) {
+  cellData = data;
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('editorApp').style.display = 'block';
+  
+  const content = data.content || '';
+  
+  // Détection rapide du format - optimisée
+  let detectedFormat = 'html';
+  
+  // Vérification rapide pour Markdown
+  if (content.length < 5000) { // Ne vérifier que pour les contenus raisonnables
+    const hasHtmlTags = /<[a-z][\s\S]*>/i.test(content);
+    const hasMarkdownTable = /\|.*\|/.test(content) && /\|[\s:|-]+\|/.test(content);
+    const hasMarkdownSyntax = !hasHtmlTags && (
+      /^#{1,6}\s/m.test(content) ||
+      /\*\*[^*]+\*\*/.test(content) ||
+      /^\s*[-*]\s+/m.test(content) ||
+      hasMarkdownTable
+    );
+    
+    if (hasMarkdownSyntax || hasMarkdownTable) {
+      detectedFormat = 'markdown';
+    }
+  }
+  
+  // Définir le format de sauvegarde
+  document.getElementById('saveFormat').value = detectedFormat;
+  
+  // Charger le contenu - une seule conversion
+  if (detectedFormat === 'markdown') {
+    const html = markdownToHtml(content);
+    document.getElementById('visualEditor').innerHTML = html;
+    document.getElementById('htmlEditor').value = formatHtml(html);
+  } else {
+    document.getElementById('visualEditor').innerHTML = content;
+    document.getElementById('htmlEditor').value = formatHtml(content);
+  }
+  
+  // Définir la police par défaut si le contenu est vide
+  if (!content.trim()) {
+    document.getElementById('visualEditor').style.fontFamily = 'Arial, sans-serif';
+  }
+  
+  // Rendre les cellules éditables en une seule passe
+  makeTableCellsEditable();
+  
+  // Initialiser les redimensionneurs de colonnes
+  initializeTableResizers();
+  
+  // Initialiser l'état avec un délai minimal
+  requestAnimationFrame(() => {
+    saveState();
+    initializeObserver();
+    document.getElementById('visualEditor').focus();
+    
+    // Mettre à jour l'état initial de la toolbar
+    setTimeout(() => {
+      handleSelectionChange();
+      updateToolbarState();
+    }, 100);
+  });
+}
+
+function initializeObserver() {
+  const visualEditor = document.getElementById('visualEditor');
+  
+  // Utiliser un seul observateur avec debounce
+  let debounceTimer;
+  const observer = new MutationObserver(() => {
+    if (!isExecutingCommand) {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        saveState();
+        // Réinitialiser les redimensionneurs après des changements
+        initializeTableResizers();
+      }, 300);
+    }
+  });
+  
+  observer.observe(visualEditor, {
+    childList: true,
+    subtree: true,
+    characterData: true
+  });
+}
+
+function showError(error) {
+  const errorDiv = document.createElement('div');
+  errorDiv.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #FEE2E2;
+    color: #991B1B;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 10000;
+    max-width: 400px;
+    animation: slideIn 0.3s ease;
+  `;
+  errorDiv.innerHTML = `
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <i class="fas fa-exclamation-circle"></i>
+      <span>${error}</span>
+    </div>
+  `;
+  
+  document.body.appendChild(errorDiv);
+  
+  setTimeout(() => {
+    errorDiv.style.animation = 'slideOut 0.3s ease';
+    setTimeout(() => errorDiv.remove(), 300);
+  }, 5000);
+}
+
+function switchTab(tab, event) {
+  // Synchroniser le contenu avant de changer d'onglet
+  if (currentTab === 'visual') {
+    const html = document.getElementById('visualEditor').innerHTML;
+    document.getElementById('htmlEditor').value = formatHtml(html);
+  } else if (currentTab === 'html') {
+    const html = document.getElementById('htmlEditor').value;
+    document.getElementById('visualEditor').innerHTML = html;
+    makeTableCellsEditable();
+    initializeTableResizers();
+  }
+  
+  // Cacher tous les onglets
+  document.getElementById('visualTab').style.display = 'none';
+  document.getElementById('htmlTab').style.display = 'none';
+  
+  // Afficher l'onglet sélectionné
+  document.getElementById(tab + 'Tab').style.display = 'block';
+  
+  // Gérer la visibilité de la toolbar
+  document.getElementById('visualToolbar').style.display = tab === 'visual' ? 'flex' : 'none';
+  
+  // Mettre à jour les classes des onglets
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  if (event && event.target) {
+    let targetTab = event.target;
+    if (targetTab.tagName !== 'DIV') {
+      targetTab = targetTab.closest('.tab');
+    }
+    targetTab.classList.add('active');
+  }
+  
+  currentTab = tab;
+  
+  // Si on passe à l'onglet visuel, mettre à jour l'état de la toolbar
+  if (tab === 'visual') {
+    setTimeout(() => {
+      handleSelectionChange();
+      updateToolbarState();
+    }, 50);
+  }
+  
+  // Si on passe à l'onglet code, s'assurer que le code est bien formaté
+  if (tab === 'html') {
+    const currentHtml = document.getElementById('htmlEditor').value;
+    if (currentHtml && !currentHtml.includes('\n')) {
+      // Si le HTML n'est pas formaté, le formater
+      document.getElementById('htmlEditor').value = formatHtml(currentHtml);
+    }
+  }
+}
+
+let syncTimer;
+function syncContent() {
+  // Debounce la synchronisation pour éviter les appels multiples
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    if (currentTab === 'visual') {
+      const html = document.getElementById('visualEditor').innerHTML;
+      const formattedHtml = formatHtml(html);
+      document.getElementById('htmlEditor').value = formattedHtml;
+    } else if (currentTab === 'html') {
+      const html = document.getElementById('htmlEditor').value;
+      document.getElementById('visualEditor').innerHTML = html;
+      // Rendre les cellules éditables si des tableaux ont été ajoutés via le code
+      makeTableCellsEditable();
+      initializeTableResizers();
+      // Mettre à jour l'état de la toolbar après modification du HTML
+      setTimeout(() => {
+        handleSelectionChange();
+        updateToolbarState();
+      }, 50);
+    }
+  }, 50);
+}
+
+function saveContent() {
+  // Synchroniser une seule fois si nécessaire
+  if (currentTab === 'visual') {
+    const html = document.getElementById('visualEditor').innerHTML;
+    document.getElementById('htmlEditor').value = html;
+  }
+  
+  const format = document.getElementById('saveFormat').value;
+  let content;
+  
+  if (format === 'markdown') {
+    const html = document.getElementById('htmlEditor').value;
+    content = htmlToMarkdown(html);
+  } else {
+    content = document.getElementById('htmlEditor').value;
+  }
+  
+  // Désactiver le bouton immédiatement
+  const saveButton = document.querySelector('.btn-primary');
+  saveButton.disabled = true;
+  saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sauvegarde...';
+  
+  // Sauvegarder sans délai
+  google.script.run
+    .withSuccessHandler(function() {
+      // Afficher un message de succès
+      const successDiv = document.createElement('div');
+      successDiv.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #D1FAE5;
+        color: #065F46;
+        padding: 12px 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 10000;
+        animation: slideIn 0.3s ease;
+      `;
+      successDiv.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <i class="fas fa-check-circle"></i>
+          <span>Contenu sauvegardé avec succès !</span>
+        </div>
+      `;
+      document.body.appendChild(successDiv);
+      
+      setTimeout(() => {
+        successDiv.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => {
+          successDiv.remove();
+          // Fermer après l'animation
+          google.script.host.close();
+        }, 300);
+      }, 1000);
+    })
+    .withFailureHandler(function(error) {
+      showError(error);
+      saveButton.disabled = false;
+      saveButton.innerHTML = '<i class="fas fa-save"></i> Sauvegarder';
+    })
+    .saveCellContent(content, cellData.row, cellData.col);
+}
+
+// Fonction pour insérer une image
+function insertImage() {
+  const url = prompt('Entrez l\'URL de l\'image:');
+  if (url) {
+    const alt = prompt('Texte alternatif (optionnel):') || '';
+    saveState();
+    isExecutingCommand = true;
+    document.execCommand('insertHTML', false, `<img src="${url}" alt="${alt}" style="max-width: 100%;">`);
+    isExecutingCommand = false;
+    saveState();
+  }
+}
+
+// Styles pour les animations
+const style = document.createElement('style');
+style.textContent = `
+  @keyframes slideOut {
+    to {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+  }
+`;
+document.head.appendChild(style);
+</script>
