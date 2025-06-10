@@ -521,10 +521,6 @@
       cursor: text;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
     /* Navigation au clavier dans les tableaux */
     #visualEditor table td[contenteditable="true"],
     #visualEditor table th[contenteditable="true"] {
@@ -563,10 +559,6 @@
     }
 
     /* Animations */
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    
     @keyframes slideIn {
       from {
         opacity: 0;
@@ -585,8 +577,7 @@
 </head>
 <body>
   <div id="loading" class="loading">
-    <div class="loading-spinner"></div>
-    <div class="loading-text">Chargement de l'éditeur...</div>
+    <div class="loading-text">Chargement...</div>
   </div>
   
   <div id="editorApp" style="display: none;">
@@ -940,81 +931,74 @@
       document.getElementById('loading').style.display = 'none';
       document.getElementById('editorApp').style.display = 'block';
       
-      // Détecter le format du contenu
       const content = data.content || '';
+      
+      // Détection rapide du format - optimisée
       let detectedFormat = 'html';
       
-      // Vérifier si c'est du Markdown (pas de balises HTML ou très peu)
-      const htmlTagCount = (content.match(/<[^>]+>/g) || []).length;
-      const markdownIndicators = [
-        /^#{1,6}\s+/m,     // Titres
-        /\*\*[^*]+\*\*/,   // Gras
-        /\*[^*]+\*/,       // Italique
-        /\[[^\]]+\]\([^)]+\)/, // Liens
-        /^[-*]\s+/m,       // Listes
-        /^\d+\.\s+/m,      // Listes numérotées
-        /^\|.+\|$/m        // Tableaux Markdown
-      ];
-      
-      const hasMarkdownSyntax = markdownIndicators.some(regex => regex.test(content));
-      
-      // Détecter spécifiquement les tableaux Markdown
-      const hasMarkdownTable = /^\|(.+)\|\s*\n\s*\|((?:\s*:?-+:?\s*\|)+)\s*\n/m.test(content);
-      
-      if ((htmlTagCount < 3 && hasMarkdownSyntax) || hasMarkdownTable) {
-        detectedFormat = 'markdown';
+      // Vérification rapide pour Markdown
+      if (content.length < 5000) { // Ne vérifier que pour les contenus raisonnables
+        const hasHtmlTags = /<[a-z][\s\S]*>/i.test(content);
+        const hasMarkdownTable = /\|.*\|/.test(content) && /\|[\s:|-]+\|/.test(content);
+        const hasMarkdownSyntax = !hasHtmlTags && (
+          /^#{1,6}\s/m.test(content) ||
+          /\*\*[^*]+\*\*/.test(content) ||
+          /^\s*[-*]\s+/m.test(content) ||
+          hasMarkdownTable
+        );
+        
+        if (hasMarkdownSyntax || hasMarkdownTable) {
+          detectedFormat = 'markdown';
+        }
       }
       
-      // Définir le format de sauvegarde par défaut selon le contenu détecté
+      // Définir le format de sauvegarde
       document.getElementById('saveFormat').value = detectedFormat;
       
-      // Charger le contenu dans les éditeurs
+      // Charger le contenu - une seule conversion
       if (detectedFormat === 'markdown') {
-        // Si c'est du Markdown, le convertir en HTML pour l'éditeur visuel
         const html = markdownToHtml(content);
         document.getElementById('visualEditor').innerHTML = html;
         document.getElementById('htmlEditor').value = html;
       } else {
-        // Si c'est du HTML
         document.getElementById('visualEditor').innerHTML = content;
         document.getElementById('htmlEditor').value = content;
       }
       
-      // Rendre les cellules des tableaux existants éditables
+      // Rendre les cellules éditables en une seule passe
       makeTableCellsEditable();
       
-      // Sauvegarder l'état initial
-      setTimeout(() => saveState(), 100);
-      
-      // Ajouter les écouteurs d'événements
+      // Initialiser l'état avec un délai minimal
+      requestAnimationFrame(() => {
+        saveState();
+        initializeObserver();
+        document.getElementById('visualEditor').focus();
+      });
+    }
+    
+    function initializeObserver() {
       const visualEditor = document.getElementById('visualEditor');
       
-      // Observer les changements
+      // Utiliser un seul observateur avec debounce
+      let debounceTimer;
       const observer = new MutationObserver(() => {
         if (!isExecutingCommand) {
-          clearTimeout(window.saveStateTimeout);
-          window.saveStateTimeout = setTimeout(saveState, 300);
+          clearTimeout(debounceTimer);
+          debounceTimer = setTimeout(saveState, 300);
         }
       });
       
       observer.observe(visualEditor, {
         childList: true,
         subtree: true,
-        characterData: true,
-        attributes: true
+        characterData: true
       });
-      
-      // Rendre les cellules des tableaux éditables
-      makeTableCellsEditable();
-      
-      // Focus sur l'éditeur pour que les raccourcis fonctionnent
-      visualEditor.focus();
     }
     
     function makeTableCellsEditable() {
       const tables = document.querySelectorAll('#visualEditor table');
       tables.forEach(table => {
-        const cells = table.querySelectorAll('td, th');
+        const cells = table.querySelectorAll('td:not([contenteditable="true"]), th:not([contenteditable="true"])');
         cells.forEach(cell => {
           cell.setAttribute('contenteditable', 'true');
         });
@@ -1036,8 +1020,13 @@
     }
     
     function switchTab(tab, event) {
-      // Synchroniser le contenu avant de changer d'onglet
-      syncContent();
+      // Synchroniser le contenu avant de changer d'onglet - immédiatement
+      if (currentTab === 'visual') {
+        document.getElementById('htmlEditor').value = document.getElementById('visualEditor').innerHTML;
+      } else if (currentTab === 'html') {
+        document.getElementById('visualEditor').innerHTML = document.getElementById('htmlEditor').value;
+        makeTableCellsEditable();
+      }
       
       // Cacher tous les onglets
       document.getElementById('visualTab').style.display = 'none';
@@ -1058,20 +1047,24 @@
       currentTab = tab;
     }
     
+    let syncTimer;
     function syncContent() {
-      if (currentTab === 'visual') {
-        const html = document.getElementById('visualEditor').innerHTML;
-        document.getElementById('htmlEditor').value = html;
-      } else if (currentTab === 'html') {
-        const html = document.getElementById('htmlEditor').value;
-        document.getElementById('visualEditor').innerHTML = html;
-        // Rendre les cellules éditables si des tableaux ont été ajoutés via le code
-        makeTableCellsEditable();
-      }
+      // Debounce la synchronisation pour éviter les appels multiples
+      clearTimeout(syncTimer);
+      syncTimer = setTimeout(() => {
+        if (currentTab === 'visual') {
+          const html = document.getElementById('visualEditor').innerHTML;
+          document.getElementById('htmlEditor').value = html;
+        } else if (currentTab === 'html') {
+          const html = document.getElementById('htmlEditor').value;
+          document.getElementById('visualEditor').innerHTML = html;
+          // Rendre les cellules éditables si des tableaux ont été ajoutés via le code
+          makeTableCellsEditable();
+        }
+      }, 50);  // Réduit de 100ms à 50ms pour plus de réactivité
     }
     
     function formatText(command, value) {
-      // Toujours sauvegarder l'état avant toute modification
       if (currentTab === 'visual' && !isExecutingCommand) {
         saveState();
       }
@@ -1083,311 +1076,205 @@
       
       isExecutingCommand = true;
       document.execCommand(command, false, value);
+      isExecutingCommand = false;
       
-      // Forcer la sauvegarde de l'état après l'action
-      setTimeout(() => {
-        isExecutingCommand = false;
-        if (currentTab === 'visual') {
-          saveState();
-        }
-      }, 50);
-    }
-    
-    function updateMarkdown() {
-      // Fonction gardée pour compatibilité mais ne fait plus rien
-      // car l'onglet Markdown a été supprimé
+      // Sauvegarde immédiate sans délai
+      if (currentTab === 'visual') {
+        saveState();
+      }
     }
     
     function htmlToMarkdown(html) {
-      // Conversion HTML vers Markdown
-      // Si aucun tag HTML n'est présent, retourner rapidement le texte
-      if (!/<[a-z][\s\S]*>/i.test(html)) {
-        return html.replace(/\n{2,}/g, '\n').trim();
+      // Retour rapide si pas de HTML
+      if (!html || !html.includes('<')) {
+        return html.trim();
       }
 
       let md = html;
       
-      // Remplacer les entités HTML courantes
-      md = md.replace(/&nbsp;/g, ' ');
-      md = md.replace(/&amp;/g, '&');
-      md = md.replace(/&lt;/g, '<');
-      md = md.replace(/&gt;/g, '>');
+      // Utiliser un parser temporaire pour une conversion plus rapide
+      const temp = document.createElement('div');
+      temp.innerHTML = html;
       
-      // Convertir les tableaux en Markdown uniquement si des tableaux sont présents
-      if (md.includes('<table')) {
-        md = md.replace(/<table[^>]*>([\s\S]*?)<\/table>/gi, function(match, tableContent) {
-          let markdownTable = '\n\n';
-          let headers = [];
-          let rows = [];
+      // Convertir les tableaux en premier (plus complexe)
+      const tables = temp.querySelectorAll('table');
+      tables.forEach(table => {
+        let markdownTable = '\n\n';
+        const rows = table.querySelectorAll('tr');
         
-        // Extraire les en-têtes
-        const headerMatch = tableContent.match(/<thead[^>]*>([\s\S]*?)<\/thead>/i);
-        if (headerMatch) {
-          const headerRows = headerMatch[1].match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi);
-          if (headerRows && headerRows[0]) {
-            headers = headerRows[0].match(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi) || [];
-            headers = headers.map(h => h.replace(/<[^>]+>/g, '').trim());
-          }
-        }
-        
-        // Si pas d'en-têtes dans thead, chercher dans le premier tr
-        if (headers.length === 0) {
-          const firstRow = tableContent.match(/<tr[^>]*>([\s\S]*?)<\/tr>/i);
-          if (firstRow) {
-            const firstRowCells = firstRow[1].match(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi) || [];
-            if (firstRowCells.length > 0) {
-              headers = firstRowCells.map(h => h.replace(/<[^>]+>/g, '').trim());
-              // Enlever cette ligne du contenu pour ne pas la dupliquer
-              tableContent = tableContent.replace(firstRow[0], '');
-            }
-          }
-        }
-        
-        // Extraire les lignes du corps
-        const bodyMatch = tableContent.match(/<tbody[^>]*>([\s\S]*?)<\/tbody>/i);
-        const contentToProcess = bodyMatch ? bodyMatch[1] : tableContent;
-        const bodyRows = contentToProcess.match(/<tr[^>]*>([\s\S]*?)<\/tr>/gi) || [];
-        
-        bodyRows.forEach(row => {
-          const cells = row.match(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi) || [];
-          const rowData = cells.map(cell => cell.replace(/<[^>]+>/g, '').trim());
-          if (rowData.length > 0) {
-            rows.push(rowData);
-          }
-        });
-        
-        // Si on n'a pas d'en-têtes mais des lignes, utiliser la première ligne comme en-têtes
-        if (headers.length === 0 && rows.length > 0) {
-          headers = rows.shift();
-        }
-        
-        // Construire le tableau Markdown
-        if (headers.length > 0) {
-          // Ligne d'en-têtes
-          markdownTable += '| ' + headers.join(' | ') + ' |\n';
-          
-          // Ligne de séparation
-          markdownTable += '|' + headers.map(() => ' --- ').join('|') + '|\n';
-          
-          // Lignes de données
-          rows.forEach(row => {
-            // S'assurer que la ligne a le même nombre de colonnes que les en-têtes
-            while (row.length < headers.length) {
-              row.push('');
-            }
-            markdownTable += '| ' + row.slice(0, headers.length).join(' | ') + ' |\n';
+        if (rows.length > 0) {
+          // Headers
+          const headers = [];
+          const firstRowCells = rows[0].querySelectorAll('th, td');
+          firstRowCells.forEach(cell => {
+            headers.push(cell.textContent.trim());
           });
+          
+          if (headers.length > 0) {
+            markdownTable += '| ' + headers.join(' | ') + ' |\n';
+            markdownTable += '|' + headers.map(() => ' --- ').join('|') + '|\n';
+            
+            // Body rows
+            for (let i = 1; i < rows.length; i++) {
+              const cells = rows[i].querySelectorAll('td, th');
+              const rowData = [];
+              cells.forEach(cell => {
+                rowData.push(cell.textContent.trim());
+              });
+              if (rowData.length > 0) {
+                markdownTable += '| ' + rowData.join(' | ') + ' |\n';
+              }
+            }
+          }
         }
         
-          return markdownTable + '\n';
-        });
-      }
+        // Remplacer le tableau par un placeholder
+        const placeholder = `<!--TABLE_${Math.random()}-->`;
+        table.outerHTML = placeholder;
+        md = md.replace(placeholder, markdownTable);
+      });
       
-      // Titres
-      md = md.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n');
-      md = md.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n');
-      md = md.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n');
-      md = md.replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n');
-      md = md.replace(/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n\n');
-      md = md.replace(/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n\n');
+      // Conversions simples avec des regex optimisées
+      md = temp.innerHTML;
       
-      // Gras et italique
-      md = md.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
-      md = md.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
-      md = md.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
-      md = md.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
+      // Remplacements en une seule passe
+      const replacements = [
+        [/&nbsp;/g, ' '],
+        [/&amp;/g, '&'],
+        [/&lt;/g, '<'],
+        [/&gt;/g, '>'],
+        [/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n'],
+        [/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n'],
+        [/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n'],
+        [/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n'],
+        [/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n\n'],
+        [/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n\n'],
+        [/<(strong|b)[^>]*>(.*?)<\/(strong|b)>/gi, '**$2**'],
+        [/<(em|i)[^>]*>(.*?)<\/(em|i)>/gi, '*$2*'],
+        [/<a[^>]+href=["']([^"']*?)["'][^>]*>(.*?)<\/a>/gi, '[$2]($1)'],
+        [/<img[^>]+src=["']([^"']*?)["'][^>]*alt=["']([^"']*?)["'][^>]*>/gi, '![$2]($1)'],
+        [/<img[^>]+src=["']([^"']*?)["'][^>]*>/gi, '![]($1)'],
+        [/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n'],
+        [/<br[^>]*>/gi, '  \n'],
+        [/<\/?div[^>]*>/gi, ''],
+        [/<\/?span[^>]*>/gi, '']
+      ];
       
-      // Soulignement (pas de support natif en Markdown, on garde le HTML)
-      md = md.replace(/<u[^>]*>(.*?)<\/u>/gi, '<u>$1</u>');
+      replacements.forEach(([regex, replacement]) => {
+        md = md.replace(regex, replacement);
+      });
       
-      // Liens
-      md = md.replace(/<a[^>]+href=["']([^"']*?)["'][^>]*>(.*?)<\/a>/gi, '[$2]($1)');
-      
-      // Images
-      md = md.replace(/<img[^>]+src=["']([^"']*?)["'][^>]*alt=["']([^"']*?)["'][^>]*>/gi, '![$2]($1)');
-      md = md.replace(/<img[^>]+src=["']([^"']*?)["'][^>]*>/gi, '![]($1)');
-      
-      // Listes
-      if (md.includes('<ul')) {
-        md = md.replace(/<ul[^>]*>([\s\S]*?)<\/ul>/gi, function(match, content) {
-          return '\n' + content.replace(/<li[^>]*>(.*?)<\/li>/gi, '- $1\n').trim() + '\n';
-        });
-      }
-
-      if (md.includes('<ol')) {
-        let olCounter = 0;
-        md = md.replace(/<ol[^>]*>([\s\S]*?)<\/ol>/gi, function(match, content) {
-          olCounter = 0;
-          return '\n' + content.replace(/<li[^>]*>(.*?)<\/li>/gi, function(m, item) {
-            olCounter++;
-            return olCounter + '. ' + item + '\n';
-          }).trim() + '\n';
-        });
-      }
-      
-      // Blockquotes
-      md = md.replace(/<blockquote[^>]*>(.*?)<\/blockquote>/gi, '> $1\n\n');
-      
-      // Code inline
-      md = md.replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`');
-      
-      // Pre/Code blocks
-      md = md.replace(/<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi, '```\n$1\n```\n\n');
-      md = md.replace(/<pre[^>]*>([\s\S]*?)<\/pre>/gi, '```\n$1\n```\n\n');
-      
-      // Paragraphes
-      md = md.replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n');
-      
-      // Sauts de ligne
-      md = md.replace(/<br[^>]*>/gi, '  \n');
-      
-      // Nettoyer les balises restantes communes
-      md = md.replace(/<\/?div[^>]*>/gi, '');
-      md = md.replace(/<\/?span[^>]*>/gi, '');
-      
-      // Nettoyer les espaces multiples et lignes vides excessives
-      md = md.replace(/\n\n\n+/g, '\n\n');
-      md = md.replace(/^\n+/, '');
-      md = md.replace(/\n+$/, '');
-      
-      return md.trim();
+      // Nettoyage final
+      return md.replace(/\n{3,}/g, '\n\n').trim();
     }
     
     function markdownToHtml(markdown) {
-      // Conversion basique Markdown vers HTML
-      let html = markdown;
-      
-      // Conserver les balises HTML existantes si présentes
-      const hasHtmlTags = /<[^>]+>/.test(markdown);
-      if (hasHtmlTags && markdown.includes('<table') && markdown.includes('</table>')) {
-        return markdown; // Retourner tel quel si déjà du HTML avec tableaux
+      // Retour rapide si déjà du HTML
+      if (!markdown || markdown.includes('<table') && markdown.includes('</table>')) {
+        return markdown;
       }
       
-      // Titres (doit être fait avant l'échappement)
-      html = html.replace(/^###### (.*?)$/gm, '<h6>$1</h6>');
-      html = html.replace(/^##### (.*?)$/gm, '<h5>$1</h5>');
-      html = html.replace(/^#### (.*?)$/gm, '<h4>$1</h4>');
-      html = html.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
-      html = html.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
-      html = html.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
+      let html = markdown;
       
-      // Gras et italique (avant l'échappement)
-      html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-      html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-      
-      // Liens
-      html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
-      
-      // Images
-      html = html.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
-      
-      // Tableaux Markdown
-      // Rechercher les tableaux Markdown
-      const tableRegex = /\|(.+)\|\n\|([\s\S]+?)\n((?:\|.+\|\n?)+)/g;
-      
-      html = html.replace(tableRegex, function(match, headerLine, separatorLine, bodyLines) {
-        // Parser les en-têtes
-        const headers = headerLine.split('|').map(h => h.trim()).filter(h => h);
-        
-        // Parser les lignes du corps
-        const rows = bodyLines.trim().split('\n').map(line => {
-          return line.split('|').map(cell => cell.trim()).filter(cell => cell !== undefined);
-        });
-        
-        // Construire le tableau HTML
-        let table = '<table border="1" style="border-collapse: collapse; width: 100%;">\n';
-        
-        // En-têtes
-        table += '<thead>\n<tr>\n';
-        headers.forEach(header => {
-          table += `<th style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">${header}</th>\n`;
-        });
-        table += '</tr>\n</thead>\n';
-        
-        // Corps
-        table += '<tbody>\n';
-        rows.forEach(row => {
-          if (row.length > 0) {
-            table += '<tr>\n';
-            for (let i = 0; i < headers.length; i++) {
-              const cellContent = row[i] || '';
-              table += `<td style="border: 1px solid #ddd; padding: 8px;">${cellContent}</td>\n`;
+      // Conversions dans l'ordre optimal
+      // 1. Tableaux Markdown (plus complexe, fait en premier)
+      if (html.includes('|')) {
+        const tableRegex = /\|(.+)\|\n\|([\s\S]+?)\n((?:\|.+\|\n?)+)/g;
+        html = html.replace(tableRegex, (match, headerLine, separatorLine, bodyLines) => {
+          const headers = headerLine.split('|').map(h => h.trim()).filter(h => h);
+          const rows = bodyLines.trim().split('\n').map(line => 
+            line.split('|').map(cell => cell.trim()).filter(cell => cell !== undefined)
+          );
+          
+          let table = '<table border="1" style="border-collapse: collapse; width: 100%;">\n<thead>\n<tr>\n';
+          headers.forEach(header => {
+            table += `<th contenteditable="true" style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">${header}</th>\n`;
+          });
+          table += '</tr>\n</thead>\n<tbody>\n';
+          
+          rows.forEach(row => {
+            if (row.length > 0) {
+              table += '<tr>\n';
+              for (let i = 0; i < headers.length; i++) {
+                table += `<td contenteditable="true" style="border: 1px solid #ddd; padding: 8px;">${row[i] || ''}</td>\n`;
+              }
+              table += '</tr>\n';
             }
-            table += '</tr>\n';
-          }
+          });
+          table += '</tbody>\n</table>';
+          
+          return table;
         });
-        table += '</tbody>\n</table>';
-        
-        return table;
+      }
+      
+      // 2. Remplacements simples en une seule passe
+      const simpleReplacements = [
+        [/^###### (.*?)$/gm, '<h6>$1</h6>'],
+        [/^##### (.*?)$/gm, '<h5>$1</h5>'],
+        [/^#### (.*?)$/gm, '<h4>$1</h4>'],
+        [/^### (.*?)$/gm, '<h3>$1</h3>'],
+        [/^## (.*?)$/gm, '<h2>$1</h2>'],
+        [/^# (.*?)$/gm, '<h1>$1</h1>'],
+        [/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'],
+        [/\*([^*]+)\*/g, '<em>$1</em>'],
+        [/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>'],
+        [/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">'],
+        [/`([^`]+)`/g, '<code>$1</code>'],
+        [/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>']
+      ];
+      
+      simpleReplacements.forEach(([regex, replacement]) => {
+        html = html.replace(regex, replacement);
       });
       
-      // Listes non ordonnées
+      // 3. Listes (utiliser une approche plus simple)
       html = html.replace(/^[-*]\s+(.+)$/gm, '<uli>$1</uli>');
-      html = html.replace(/(<uli>.*<\/uli>\n?)+/g, function(match) {
-        return '<ul>' + match.replace(/<uli>/g, '<li>').replace(/<\/uli>/g, '</li>') + '</ul>';
-      });
+      html = html.replace(/(<uli>.*<\/uli>\s*)+/g, match => 
+        '<ul>' + match.replace(/<uli>/g, '<li>').replace(/<\/uli>/g, '</li>') + '</ul>'
+      );
       
-      // Code inline
-      html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-      
-      // Blocs de code
-      html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
-      
-      // Blockquotes
-      html = html.replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>');
-      html = html.replace(/(<blockquote>.*<\/blockquote>\n?)+/g, function(match) {
-        return '<blockquote>' + match.replace(/<\/?blockquote>/g, '') + '</blockquote>';
-      });
-      
-      // Paragraphes (seulement pour le texte qui n'est pas déjà dans des balises)
+      // 4. Paragraphes (seulement pour le texte non balisé)
       html = html.split('\n\n').map(block => {
         block = block.trim();
-        if (!block) return '';
-        if (block.startsWith('<')) return block;
+        if (!block || block.startsWith('<')) return block;
         return '<p>' + block + '</p>';
       }).join('\n\n');
       
-      // Sauts de ligne simples
+      // 5. Sauts de ligne
       html = html.replace(/([^>])\n([^<])/g, '$1<br>$2');
       
       return html;
     }
     
     function saveContent() {
-      syncContent();
+      // Synchroniser une seule fois si nécessaire
+      if (currentTab === 'visual') {
+        const html = document.getElementById('visualEditor').innerHTML;
+        document.getElementById('htmlEditor').value = html;
+      }
       
       const format = document.getElementById('saveFormat').value;
       let content;
       
       if (format === 'markdown') {
-        // Sauvegarder en Markdown
-        // Convertir le HTML actuel en Markdown
         const html = document.getElementById('htmlEditor').value;
         content = htmlToMarkdown(html);
       } else {
-        // Sauvegarder en HTML (par défaut)
         content = document.getElementById('htmlEditor').value;
       }
       
-      // Afficher un indicateur de sauvegarde
+      // Désactiver le bouton immédiatement
       const saveButton = document.querySelector('.btn-primary');
-      const originalHTML = saveButton.innerHTML;
-      saveButton.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"></path><path d="M12 6v6l4 2"></path></svg> Sauvegarde...';
       saveButton.disabled = true;
       
+      // Sauvegarder sans délai
       google.script.run
         .withSuccessHandler(function() {
-          // Afficher un message de succès
-          saveButton.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Sauvegardé !';
-          saveButton.style.background = 'var(--success-color)';
-          // Fermer rapidement la fenêtre après sauvegarde
-          setTimeout(() => {
-            google.script.host.close();
-          }, 500);
+          // Fermer immédiatement
+          google.script.host.close();
         })
         .withFailureHandler(function(error) {
           showError(error);
-          saveButton.innerHTML = originalHTML;
           saveButton.disabled = false;
         })
         .saveCellContent(content, cellData.row, cellData.col);
@@ -1507,13 +1394,11 @@
       document.execCommand('insertHTML', false, html);
       hideTableDialog();
       
-      // Forcer la sauvegarde après et activer les outils de tableau
-      setTimeout(() => {
-        isExecutingCommand = false;
-        saveState();
-        makeTableCellsEditable();
-        checkTableFocus();
-      }, 50);
+      // Mise à jour immédiate
+      isExecutingCommand = false;
+      saveState();
+      makeTableCellsEditable();
+      checkTableFocus();
     }
     
     function getParentTable() {
@@ -1663,10 +1548,8 @@
         saveState();
         isExecutingCommand = true;
         row.remove();
-        setTimeout(() => {
-          isExecutingCommand = false;
-          saveState();
-        }, 50);
+        isExecutingCommand = false;
+        saveState();
       }
     }
     
@@ -1704,10 +1587,8 @@
           }
         });
         
-        setTimeout(() => {
-          isExecutingCommand = false;
-          saveState();
-        }, 50);
+        isExecutingCommand = false;
+        saveState();
       }
     }
     
@@ -1729,11 +1610,9 @@
         table.remove();
         
         // Mettre à jour l'état des boutons
-        setTimeout(() => {
-          isExecutingCommand = false;
-          saveState();
-          checkTableFocus();
-        }, 50);
+        isExecutingCommand = false;
+        saveState();
+        checkTableFocus();
       }
     }
   </script>
