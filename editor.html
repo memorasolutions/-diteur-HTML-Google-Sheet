@@ -1071,7 +1071,8 @@
   
   <script>
     let currentTab = 'visual';
-    let cellData = <?!= JSON.stringify(cellData) ?>;
+    // Échapper les chevrons pour éviter toute rupture de la balise <script>
+    let cellData = <?!= JSON.stringify(cellData).replace(/</g, '\x3c') ?>;
     let undoStack = [];
     let redoStack = [];
     let maxUndoSteps = 50;

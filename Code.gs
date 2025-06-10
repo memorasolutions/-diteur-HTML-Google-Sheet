@@ -87,8 +87,9 @@ function openEditor(cell) {
   
   // Utiliser getValue() avec une vérification rapide
   const value = cell.getValue();
+  const cleanValue = sanitizeHtml(value);
   const cellData = {
-    content: value || '',
+    content: cleanValue || '',
     row: cell.getRow(),
     col: cell.getColumn(),
   };
