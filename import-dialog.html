@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary-color: #4F46E5;
+      --primary-hover: #6366F1;
+      --primary-light: rgba(79, 70, 229, 0.1);
+      --secondary-color: #F3F4F6;
+      --border-color: #E5E7EB;
+      --text-primary: #111827;
+      --text-secondary: #6B7280;
+      --success-color: #10B981;
+      --danger-color: #EF4444;
+    }
+    
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
+      color: var(--text-primary);
+      background: white;
+    }
+    
+    h2 {
+      margin: 0 0 20px 0;
+      font-size: 20px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    h2 i {
+      color: var(--primary-color);
+    }
+    
+    .upload-area {
+      border: 2px dashed var(--border-color);
+      border-radius: 8px;
+      padding: 40px;
+      text-align: center;
+      background: #F9FAFB;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-bottom: 20px;
+    }
+    
+    .upload-area:hover {
+      border-color: var(--primary-color);
+      background: var(--primary-light);
+    }
+    
+    .upload-area.drag-over {
+      border-color: var(--primary-color);
+      background: var(--primary-light);
+      transform: scale(1.02);
+    }
+    
+    .upload-area i {
+      font-size: 48px;
+      color: var(--primary-color);
+      margin-bottom: 16px;
+    }
+    
+    .upload-area p {
+      margin: 0 0 12px 0;
+      font-size: 16px;
+      color: var(--text-primary);
+    }
+    
+    .upload-area small {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    
+    input[type="file"] {
+      display: none;
+    }
+    
+    .or-divider {
+      text-align: center;
+      margin: 20px 0;
+      position: relative;
+    }
+    
+    .or-divider::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--border-color);
+    }
+    
+    .or-divider span {
+      background: white;
+      padding: 0 16px;
+      position: relative;
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    
+    .json-input {
+      margin-bottom: 20px;
+    }
+    
+    .json-input label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    
+    .json-input textarea {
+      width: 100%;
+      min-height: 200px;
+      padding: 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-family: 'Monaco', 'Menlo', monospace;
+      font-size: 13px;
+      resize: vertical;
+      transition: all 0.2s ease;
+    }
+    
+    .json-input textarea:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px var(--primary-light);
+    }
+    
+    .actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+    
+    .btn-primary:disabled {
+      background: #9CA3AF;
+      cursor: not-allowed;
+    }
+    
+    .btn-secondary {
+      background: white;
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color);
+    }
+    
+    .btn-secondary:hover {
+      background: var(--secondary-color);
+      color: var(--text-primary);
+    }
+    
+    .preview-section {
+      margin: 20px 0;
+      padding: 16px;
+      background: #F9FAFB;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      display: none;
+    }
+    
+    .preview-section h3 {
+      margin: 0 0 12px 0;
+      font-size: 16px;
+      color: var(--text-primary);
+    }
+    
+    .preview-list {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+    
+    .preview-item {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .preview-item:last-child {
+      border-bottom: none;
+    }
+    
+    .preview-item strong {
+      color: var(--text-primary);
+    }
+    
+    .error-message {
+      background: var(--danger-color);
+      color: white;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+    
+    .success-message {
+      background: var(--success-color);
+      color: white;
+      padding: 12px;
+      border-radius: 6px;
+      margin-bottom: 20px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h2><i class="fas fa-file-import"></i> Importer des Templates</h2>
+  
+  <div id="errorMessage" class="error-message">
+    <i class="fas fa-exclamation-circle"></i> <span id="errorText"></span>
+  </div>
+  
+  <div id="successMessage" class="success-message">
+    <i class="fas fa-check-circle"></i> <span id="successText"></span>
+  </div>
+  
+  <div class="upload-area" onclick="document.getElementById('fileInput').click()" ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+    <i class="fas fa-cloud-upload-alt"></i>
+    <p>Cliquez ou glissez-déposez un fichier JSON</p>
+    <small>Format accepté : .json</small>
+  </div>
+  
+  <input type="file" id="fileInput" accept=".json" onchange="handleFileSelect(event)">
+  
+  <div class="or-divider">
+    <span>OU</span>
+  </div>
+  
+  <div class="json-input">
+    <label for="jsonContent">Collez le contenu JSON directement :</label>
+    <textarea id="jsonContent" placeholder='{"nom_template": {"content": "...", "description": "..."}}'></textarea>
+  </div>
+  
+  <div id="preview" class="preview-section">
+    <h3>Templates à importer :</h3>
+    <div id="previewList" class="preview-list">
+      <!-- Les templates seront listés ici -->
+    </div>
+  </div>
+  
+  <div class="actions">
+    <button class="btn btn-secondary" onclick="google.script.host.close()">
+      <i class="fas fa-times"></i> Annuler
+    </button>
+    <button id="importBtn" class="btn btn-primary" onclick="importTemplates()" disabled>
+      <i class="fas fa-file-import"></i> Importer
+    </button>
+  </div>
+  
+  <script>
+    let templatesData = null;
+    
+    function handleDragOver(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.currentTarget.classList.add('drag-over');
+    }
+    
+    function handleDragLeave(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.currentTarget.classList.remove('drag-over');
+    }
+    
+    function handleDrop(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      e.currentTarget.classList.remove('drag-over');
+      
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        processFile(files[0]);
+      }
+    }
+    
+    function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (file) {
+        processFile(file);
+      }
+    }
+    
+    function processFile(file) {
+      if (!file.name.endsWith('.json')) {
+        showError('Veuillez sélectionner un fichier JSON valide');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const content = e.target.result;
+          parseAndPreview(content);
+          document.getElementById('jsonContent').value = content;
+        } catch (error) {
+          showError('Erreur lors de la lecture du fichier');
+        }
+      };
+      reader.readAsText(file);
+    }
+    
+    // Écouter les changements dans le textarea
+    document.getElementById('jsonContent').addEventListener('input', function() {
+      const content = this.value.trim();
+      if (content) {
+        parseAndPreview(content);
+      } else {
+        hidePreview();
+      }
+    });
+    
+    function parseAndPreview(content) {
+      try {
+        templatesData = JSON.parse(content);
+        
+        // Vérifier que c'est un objet valide
+        if (typeof templatesData !== 'object' || templatesData === null) {
+          throw new Error('Format JSON invalide');
+        }
+        
+        // Afficher la prévisualisation
+        showPreview(templatesData);
+        hideError();
+        
+        // Activer le bouton d'import
+        document.getElementById('importBtn').disabled = false;
+      } catch (error) {
+        showError('Format JSON invalide : ' + error.message);
+        hidePreview();
+        document.getElementById('importBtn').disabled = true;
+      }
+    }
+    
+    function showPreview(templates) {
+      const preview = document.getElementById('preview');
+      const previewList = document.getElementById('previewList');
+      
+      previewList.innerHTML = '';
+      
+      let count = 0;
+      Object.entries(templates).forEach(([name, template]) => {
+        const item = document.createElement('div');
+        item.className = 'preview-item';
+        
+        const description = template.description || 'Aucune description';
+        item.innerHTML = `<strong>${name}</strong> - ${description}`;
+        
+        previewList.appendChild(item);
+        count++;
+      });
+      
+      if (count === 0) {
+        previewList.innerHTML = '<em>Aucun template trouvé dans le fichier</em>';
+      }
+      
+      preview.style.display = 'block';
+    }
+    
+    function hidePreview() {
+      document.getElementById('preview').style.display = 'none';
+      templatesData = null;
+    }
+    
+    function showError(message) {
+      const errorDiv = document.getElementById('errorMessage');
+      document.getElementById('errorText').textContent = message;
+      errorDiv.style.display = 'block';
+      hideSuccess();
+    }
+    
+    function hideError() {
+      document.getElementById('errorMessage').style.display = 'none';
+    }
+    
+    function showSuccess(message) {
+      const successDiv = document.getElementById('successMessage');
+      document.getElementById('successText').textContent = message;
+      successDiv.style.display = 'block';
+      hideError();
+    }
+    
+    function hideSuccess() {
+      document.getElementById('successMessage').style.display = 'none';
+    }
+    
+    function importTemplates() {
+      if (!templatesData) {
+        showError('Aucun template à importer');
+        return;
+      }
+      
+      const importBtn = document.getElementById('importBtn');
+      importBtn.disabled = true;
+      importBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Import en cours...';
+      
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showSuccess(`${result.count} template(s) importé(s) avec succès !`);
+            setTimeout(() => {
+              google.script.host.close();
+            }, 2000);
+          } else {
+            showError('Erreur lors de l\'import : ' + result.error);
+            importBtn.disabled = false;
+            importBtn.innerHTML = '<i class="fas fa-file-import"></i> Importer';
+          }
+        })
+        .withFailureHandler(function(error) {
+          showError('Erreur lors de l\'import : ' + error);
+          importBtn.disabled = false;
+          importBtn.innerHTML = '<i class="fas fa-file-import"></i> Importer';
+        })
+        .processImportedTemplates(JSON.stringify(templatesData));
+    }
+  </script>
+</body>
+</html>
