@@ -1502,25 +1502,25 @@
       const rows = parseInt(document.getElementById('tableRows').value) || 3;
       const cols = parseInt(document.getElementById('tableCols').value) || 3;
       const preview = document.getElementById('tablePreview');
-      
-      let html = '<table>';
-      
+
+      let html = '<table style="width: 95.4045%; border-collapse: collapse; border: 2px solid #6ea6cf; text-align: center; border-radius: 8px; overflow: hidden;">';
+
       // En-tête
-      html += '<tr>';
+      html += '<tr style="background-color: #6ea6cf; color: white;">';
       for (let j = 0; j < cols; j++) {
-        html += `<th>En-tête ${j + 1}</th>`;
+        html += `<th style="border: 1px solid #6ea6cf; padding: 10px;">En-tête ${j + 1}</th>`;
       }
       html += '</tr>';
-      
+
       // Corps
       for (let i = 0; i < rows - 1; i++) {
         html += '<tr>';
         for (let j = 0; j < cols; j++) {
-          html += `<td>Cellule</td>`;
+          html += '<td style="border: 1px dotted #303030; padding: 15px; background-color: #f0f0f0;">Cellule</td>';
         }
         html += '</tr>';
       }
-      
+
       html += '</table>';
       preview.innerHTML = html;
     }
@@ -1547,17 +1547,17 @@
       const rows = parseInt(document.getElementById('tableRows').value) || 3;
       const cols = parseInt(document.getElementById('tableCols').value) || 3;
       
-      let html = '<table border="1" style="border-collapse: collapse; width: 100%;">';
-      html += '<thead><tr>';
+      let html = '<table style="width: 95.4045%; border-collapse: collapse; border: 2px solid #6ea6cf; text-align: center; border-radius: 8px; overflow: hidden;">';
+      html += '<thead><tr style="background-color: #6ea6cf; color: white;">';
       for (let j = 0; j < cols; j++) {
-        html += `<th contenteditable="true" style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">En-tête ${j + 1}</th>`;
+        html += `<th contenteditable="true" style="border: 1px solid #6ea6cf; padding: 10px;">En-tête ${j + 1}</th>`;
       }
       html += '</tr></thead><tbody>';
       
       for (let i = 0; i < rows - 1; i++) {
         html += '<tr>';
         for (let j = 0; j < cols; j++) {
-          html += '<td contenteditable="true" style="border: 1px solid #ddd; padding: 8px;">Cellule</td>';
+          html += '<td contenteditable="true" style="border: 1px dotted #303030; padding: 15px; background-color: #f0f0f0;">Cellule</td>';
         }
         html += '</tr>';
       }
