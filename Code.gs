@@ -1,14 +1,8 @@
 // Code.gs - Script principal Google Apps Script optimisé
 
-/**
- * Note: Les méthodes isRecalculationEnabled() et setRecalculationEnabled()
- * n'existent pas dans l'API Google Apps Script actuelle.
- * Les optimisations utilisent d'autres techniques comme SpreadsheetApp.flush()
- * pour améliorer les performances.
- */
-
 // Variable globale pour le template en cache
 let TEMPLATE_CACHE = null;
+let SCRIPT_PROPERTIES = null;
 
 /**
  * Cache simple pour éviter de recharger le même contenu
@@ -57,10 +51,23 @@ function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('Éditeur HTML')
     .addItem('Éditer la cellule active', 'editActiveCellDialog')
+    .addItem('Gérer les templates', 'openTemplateManager')
+    .addSeparator()
+    .addItem('Exporter les templates', 'exportTemplates')
+    .addItem('Importer des templates', 'importTemplates')
+    .addItem('Réinitialiser les templates', 'resetTemplates')
     .addToUi();
   
   // Précharger le template en arrière-plan
   preloadTemplate();
+  
+  // Initialiser les propriétés du script
+  SCRIPT_PROPERTIES = PropertiesService.getScriptProperties();
+  
+  // Initialiser les templates s'ils n'existent pas
+  if (!SCRIPT_PROPERTIES.getProperty('templates')) {
+    SCRIPT_PROPERTIES.setProperty('templates', JSON.stringify({}));
+  }
 }
 
 /**
@@ -77,6 +84,13 @@ function onSelectionChange(e) {
   if (value.includes('<') && value.includes('>')) {
     openEditor(range);
   }
+}
+
+/**
+ * Inclut le contenu d'un fichier HTML
+ */
+function include(filename) {
+  return HtmlService.createHtmlOutputFromFile(filename).getContent();
 }
 
 /**
@@ -110,7 +124,7 @@ function openEditor(cell) {
     .setTitle('Éditeur HTML');
     
   const ui = SpreadsheetApp.getUi();
-  html.setWidth(900).setHeight(750);
+  html.setWidth(1000).setHeight(800);
   ui.showModalDialog(html, 'Éditeur HTML');
 }
 
@@ -122,7 +136,7 @@ function editActiveCellDialog() {
   const cell = sheet.getActiveCell();
   const value = cell.getValue();
   
-  if (typeof value !== 'string') {
+  if (typeof value !== 'string' && value !== '') {
     SpreadsheetApp.getUi().alert('La cellule active ne contient pas de texte.');
     return;
   }
@@ -171,7 +185,7 @@ function sanitizeHtml(html) {
   const allowedTags = ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 'span', 'div', 
                       'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 
                       'a', 'img', 'blockquote', 'code', 'pre', 'table', 'tr', 
-                      'td', 'th', 'thead', 'tbody'];
+                      'td', 'th', 'thead', 'tbody', 'col', 'colgroup'];
   
   // Supprime les scripts et styles en une seule passe
   html = html
@@ -184,24 +198,158 @@ function sanitizeHtml(html) {
 }
 
 /**
- * Insère un bouton d'accès direct à l'éditeur HTML.
- * Le bouton est ajouté en haut à gauche de la feuille et
- * exécute la fonction editActiveCellDialog lors d'un clic.
+ * Gestion des templates
  */
-function insertEditorButton() {
-  var sheet = SpreadsheetApp.getActiveSheet();
-  var imageUrl = 'https://www.gstatic.com/images/icons/material/system/1x/edit_black_24dp.png';
-  var blob = UrlFetchApp.fetch(imageUrl).getBlob();
-  var button = sheet.insertImage(blob, 1, 1);
-  if (button.assignScript) {
-    button.assignScript('editActiveCellDialog');
+function saveTemplate(name, content, description) {
+  try {
+    if (!SCRIPT_PROPERTIES) {
+      SCRIPT_PROPERTIES = PropertiesService.getScriptProperties();
+    }
+    
+    let templates = getTemplates();
+    
+    templates[name] = {
+      content: content,
+      description: description || '',
+      createdAt: templates[name] ? templates[name].createdAt : new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    SCRIPT_PROPERTIES.setProperty('templates', JSON.stringify(templates));
+    return { success: true };
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde du template:', error);
+    return { success: false, error: error.toString() };
   }
-  button.setAltTextDescription('Éditer la cellule active');
+}
+
+function getTemplates() {
+  try {
+    if (!SCRIPT_PROPERTIES) {
+      SCRIPT_PROPERTIES = PropertiesService.getScriptProperties();
+    }
+    
+    const templatesStr = SCRIPT_PROPERTIES.getProperty('templates');
+    
+    // Si pas de templates, retourner un objet vide
+    if (!templatesStr) {
+      // Initialiser avec un template d'exemple
+      const defaultTemplates = {
+        "Tableau simple": {
+          content: '<table style="width: 100%; border-collapse: collapse;"><tr><th style="border: 1px solid #ddd; padding: 8px; background-color: #5B9BD5; color: white;">En-tête 1</th><th style="border: 1px solid #ddd; padding: 8px; background-color: #5B9BD5; color: white;">En-tête 2</th></tr><tr><td style="border: 1px solid #ddd; padding: 8px;">Cellule 1</td><td style="border: 1px solid #ddd; padding: 8px;">Cellule 2</td></tr></table>',
+          description: "Un tableau simple avec en-têtes",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        "Titre et paragraphe": {
+          content: '<h2 style="color: #4F46E5;">Titre de section</h2><p>Voici un paragraphe de texte avec <strong>du texte en gras</strong> et <em>du texte en italique</em>.</p>',
+          description: "Un titre H2 avec un paragraphe formaté",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
+      };
+      
+      // Sauvegarder les templates par défaut
+      SCRIPT_PROPERTIES.setProperty('templates', JSON.stringify(defaultTemplates));
+      return defaultTemplates;
+    }
+    
+    return JSON.parse(templatesStr);
+  } catch (error) {
+    console.error('Erreur lors de la récupération des templates:', error);
+    return {};
+  }
+}
+
+function deleteTemplate(name) {
+  try {
+    if (!SCRIPT_PROPERTIES) {
+      SCRIPT_PROPERTIES = PropertiesService.getScriptProperties();
+    }
+    
+    let templates = getTemplates();
+    delete templates[name];
+    SCRIPT_PROPERTIES.setProperty('templates', JSON.stringify(templates));
+    return { success: true };
+  } catch (error) {
+    console.error('Erreur lors de la suppression du template:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Ouvre le gestionnaire de templates
+ */
+function openTemplateManager() {
+  const html = HtmlService.createTemplateFromFile('template-manager')
+    .evaluate()
+    .setWidth(800)
+    .setHeight(600);
+  
+  SpreadsheetApp.getUi().showModalDialog(html, 'Gestionnaire de Templates');
+}
+
+/**
+ * Export des templates
+ */
+function exportTemplates() {
+  const templates = getTemplates();
+  const json = JSON.stringify(templates, null, 2);
+  
+  // Créer un blob avec le JSON
+  const blob = Utilities.newBlob(json, 'application/json', 'templates_export.json');
+  
+  // Créer un fichier temporaire et obtenir son URL
+  const file = DriveApp.createFile(blob);
+  const url = file.getDownloadUrl();
+  
+  // Afficher le lien de téléchargement
+  const htmlOutput = HtmlService.createHtmlOutput(
+    `<p>Templates exportés avec succès !</p>
+     <p><a href="${url}" target="_blank">Télécharger le fichier</a></p>
+     <p style="color: #666; font-size: 12px;">Le fichier sera supprimé automatiquement après téléchargement.</p>`
+  )
+  .setWidth(400)
+  .setHeight(150);
+  
+  SpreadsheetApp.getUi().showModalDialog(htmlOutput, 'Export des Templates');
+  
+  // Supprimer le fichier après 5 minutes
+  Utilities.sleep(300000);
+  file.setTrashed(true);
+}
+
+/**
+ * Import des templates
+ */
+function importTemplates() {
+  const html = HtmlService.createHtmlOutputFromFile('import-dialog')
+    .setWidth(500)
+    .setHeight(300);
+  
+  SpreadsheetApp.getUi().showModalDialog(html, 'Importer des Templates');
+}
+
+function processImportedTemplates(jsonContent) {
+  try {
+    const importedTemplates = JSON.parse(jsonContent);
+    const existingTemplates = getTemplates();
+    
+    // Fusionner les templates
+    Object.keys(importedTemplates).forEach(key => {
+      existingTemplates[key] = importedTemplates[key];
+      existingTemplates[key].updatedAt = new Date().toISOString();
+    });
+    
+    SCRIPT_PROPERTIES.setProperty('templates', JSON.stringify(existingTemplates));
+    return { success: true, count: Object.keys(importedTemplates).length };
+  } catch (error) {
+    return { success: false, error: error.toString() };
+  }
 }
 
 /**
  * Optimisation : Récupère le contenu de plusieurs cellules en une fois
- * Utile si vous avez besoin de traiter plusieurs cellules
  */
 function getBatchCellContents(ranges) {
   const sheet = SpreadsheetApp.getActiveSheet();
@@ -252,32 +400,6 @@ function saveBatchCellContents(updates) {
 }
 
 /**
- * Version alternative optimisée pour les cellules contiguës
- */
-function saveCellContentsFast(startRow, startCol, contents) {
-  const sheet = SpreadsheetApp.getActiveSheet();
-  
-  try {
-    // Nettoyer tous les contenus
-    const cleanContents = contents.map(content => [sanitizeHtml(content)]);
-    
-    // Obtenir la plage de cellules
-    const range = sheet.getRange(startRow, startCol, cleanContents.length, 1);
-    
-    // Écrire toutes les valeurs en une fois
-    range.setValues(cleanContents);
-    
-    // Forcer l'écriture
-    SpreadsheetApp.flush();
-    
-    return { success: true, count: cleanContents.length };
-  } catch (error) {
-    console.error('Erreur lors de la sauvegarde rapide:', error);
-    throw error;
-  }
-}
-
-/**
  * Fonction utilitaire pour mesurer les performances
  */
 function measurePerformance(functionName, ...args) {
@@ -295,5 +417,49 @@ function measurePerformance(functionName, ...args) {
     const duration = endTime - startTime;
     console.error(`${functionName} a échoué après ${duration}ms:`, error);
     throw error;
+  }
+}
+
+/**
+ * Réinitialise les templates avec des exemples
+ */
+function resetTemplates() {
+  const ui = SpreadsheetApp.getUi();
+  const result = ui.alert(
+    'Réinitialiser les templates',
+    'Cette action va supprimer tous vos templates actuels et les remplacer par des templates d\'exemple. Continuer ?',
+    ui.ButtonSet.YES_NO
+  );
+  
+  if (result == ui.Button.YES) {
+    const defaultTemplates = {
+      "Tableau simple": {
+        content: '<table style="width: 100%; border-collapse: collapse;"><tr><th style="border: 1px solid #ddd; padding: 8px; background-color: #5B9BD5; color: white;">En-tête 1</th><th style="border: 1px solid #ddd; padding: 8px; background-color: #5B9BD5; color: white;">En-tête 2</th></tr><tr><td style="border: 1px solid #ddd; padding: 8px;">Cellule 1</td><td style="border: 1px solid #ddd; padding: 8px;">Cellule 2</td></tr></table>',
+        description: "Un tableau simple avec en-têtes",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      "Titre et paragraphe": {
+        content: '<h2 style="color: #4F46E5;">Titre de section</h2><p>Voici un paragraphe de texte avec <strong>du texte en gras</strong> et <em>du texte en italique</em>.</p>',
+        description: "Un titre H2 avec un paragraphe formaté",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      "Liste à puces": {
+        content: '<h3>Liste des éléments :</h3><ul><li>Premier élément</li><li>Deuxième élément</li><li>Troisième élément</li></ul>',
+        description: "Une liste à puces simple",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      "Citation": {
+        content: '<blockquote style="border-left: 4px solid #4F46E5; padding-left: 16px; margin: 16px 0; color: #6B7280; font-style: italic;">"Le succès n\'est pas final, l\'échec n\'est pas fatal : c\'est le courage de continuer qui compte."<br><small>- Winston Churchill</small></blockquote>',
+        description: "Une citation avec attribution",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+    };
+    
+    SCRIPT_PROPERTIES.setProperty('templates', JSON.stringify(defaultTemplates));
+    ui.alert('Templates réinitialisés', 'Les templates ont été réinitialisés avec succès.', ui.ButtonSet.OK);
   }
 }
