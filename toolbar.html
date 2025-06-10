@@ -1,0 +1,383 @@
+<script>
+// toolbar.js - Gestion de la toolbar et des actions
+
+/**
+ * Formate le texte avec une commande
+ */
+function formatText(command, value) {
+  if (currentTab === 'visual' && !isExecutingCommand) {
+    saveState();
+  }
+  
+  if (command === 'createLink') {
+    let defaultUrl = '';
+    let anchorEl = null;
+    const sel = window.getSelection();
+    
+    if (sel.rangeCount) {
+      let node = sel.anchorNode;
+      if (node.nodeType === 3) node = node.parentElement;
+      
+      // Chercher un lien parent
+      while (node && node !== document.getElementById('visualEditor')) {
+        if (node.tagName === 'A') {
+          anchorEl = node;
+          defaultUrl = anchorEl.getAttribute('href') || '';
+          break;
+        }
+        node = node.parentElement;
+      }
+      
+      // Si pas de lien parent, chercher dans la sélection
+      if (!defaultUrl && !sel.isCollapsed) {
+        const range = sel.getRangeAt(0);
+        const links = range.cloneContents().querySelectorAll('a');
+        if (links.length > 0) {
+          defaultUrl = links[0].getAttribute('href') || '';
+        }
+      }
+    }
+    
+    value = prompt('Entrez l\'URL:', defaultUrl);
+    if (value === null) return; // Annulé
+    
+    isExecutingCommand = true;
+    if (anchorEl && (sel.isCollapsed || (anchorEl.contains(sel.anchorNode) && anchorEl.contains(sel.focusNode)))) {
+      anchorEl.setAttribute('href', value);
+    } else {
+      document.execCommand('createLink', false, value);
+    }
+    isExecutingCommand = false;
+  } else {
+    isExecutingCommand = true;
+    document.execCommand(command, false, value);
+    isExecutingCommand = false;
+  }
+  
+  // Sauvegarde immédiate sans délai
+  if (currentTab === 'visual') {
+    saveState();
+    updateToolbarState();
+  }
+}
+
+/**
+ * Définit la couleur du texte
+ */
+function setTextColor(color) {
+  formatText('foreColor', color);
+}
+
+/**
+ * Définit la couleur de fond
+ */
+function setCellBackground(color) {
+  // Vérifier si on est dans un tableau
+  const cells = getSelectedCells();
+  const targets = cells.length ? cells : [getParentCell()].filter(Boolean);
+  
+  if (targets.length) {
+    saveState();
+    targets.forEach(c => c.style.backgroundColor = color);
+    saveState();
+  } else {
+    // Si pas dans un tableau, appliquer la couleur de fond au texte sélectionné
+    formatText('backColor', color);
+  }
+}
+
+/**
+ * Définit la police
+ */
+function setFont(font) {
+  formatText('fontName', font);
+}
+
+/**
+ * Initialise les color pickers
+ */
+function initializeColorPickers() {
+  const textPicker = document.getElementById('textColorPicker');
+  const bgPicker = document.getElementById('bgColorPicker');
+
+  textPicker.addEventListener('input', e => {
+    if (currentTab === 'visual') {
+      setTextColor(e.target.value);
+      updateColorDisplay('textColorPicker', e.target.value);
+    }
+  });
+  
+  bgPicker.addEventListener('input', e => {
+    if (currentTab === 'visual') {
+      setCellBackground(e.target.value);
+      updateColorDisplay('bgColorPicker', e.target.value);
+    }
+  });
+
+  // Initialisation des affichages de couleur
+  updateColorDisplay('textColorPicker', textPicker.value);
+  updateColorDisplay('bgColorPicker', bgPicker.value);
+}
+
+/**
+ * Met à jour l'affichage de la couleur
+ */
+function updateColorDisplay(pickerId, color) {
+  const picker = document.getElementById(pickerId).parentElement;
+  const display = picker.querySelector('.color-display');
+  if (display) {
+    display.style.backgroundColor = color;
+  }
+  
+  // Mettre à jour la couleur de l'icône
+  const icon = picker.querySelector('.color-icon');
+  if (icon) {
+    // Calculer la luminosité de la couleur
+    let r, g, b;
+    if (color.startsWith('#')) {
+      r = parseInt(color.substr(1, 2), 16);
+      g = parseInt(color.substr(3, 2), 16);
+      b = parseInt(color.substr(5, 2), 16);
+    } else if (color.startsWith('rgb')) {
+      const matches = color.match(/\d+/g);
+      if (matches && matches.length >= 3) {
+        r = parseInt(matches[0]);
+        g = parseInt(matches[1]);
+        b = parseInt(matches[2]);
+      } else {
+        r = g = b = 255; // Blanc par défaut
+      }
+    } else {
+      // Couleur par défaut si non valide
+      r = g = b = 255;
+    }
+    
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    
+    // Pour le color picker de fond, toujours garder l'icône visible
+    if (pickerId === 'bgColorPicker') {
+      // L'icône a déjà un contour blanc grâce au text-shadow
+      icon.style.color = brightness > 200 ? '#374151' : '#FFFFFF';
+    } else {
+      // Pour le texte, ajuster selon la luminosité
+      icon.style.color = brightness > 128 ? '#374151' : '#FFFFFF';
+    }
+  }
+}
+
+/**
+ * Vérifie l'état du focus dans un tableau
+ */
+function checkTableFocus() {
+  const selection = window.getSelection();
+  const tableGroup = document.getElementById('tableTools');
+  
+  if (selection.rangeCount > 0) {
+    let node = selection.anchorNode;
+    let inTable = false;
+    
+    // Vérifier si on est dans un tableau
+    while (node && node !== document.getElementById('visualEditor')) {
+      if (node.nodeName === 'TABLE' || (node.parentElement && node.parentElement.nodeName === 'TABLE')) {
+        inTable = true;
+        break;
+      }
+      node = node.parentElement;
+    }
+    
+    // Activer/désactiver les boutons de tableau
+    if (inTable) {
+      tableGroup.classList.add('table-tools-active');
+      // Marquer le tableau actif
+      const table = getParentTable();
+      if (table) {
+        // Retirer la classe de tous les tableaux
+        document.querySelectorAll('#visualEditor table').forEach(t => {
+          t.classList.remove('table-selected');
+        });
+        table.classList.add('table-selected');
+      }
+    } else {
+      tableGroup.classList.remove('table-tools-active');
+      // Retirer la sélection de tous les tableaux
+      document.querySelectorAll('#visualEditor table').forEach(t => {
+        t.classList.remove('table-selected');
+      });
+    }
+  }
+}
+
+/**
+ * Gère les changements de sélection
+ */
+function handleSelectionChange() {
+  checkTableFocus();
+  updateToolbarState();
+}
+
+/**
+ * Met à jour l'état de la toolbar
+ */
+function updateToolbarState() {
+  const textPicker = document.getElementById('textColorPicker');
+  const bgPicker = document.getElementById('bgColorPicker');
+
+  // Obtenir l'élément de référence
+  let refEl = null;
+  const sel = window.getSelection();
+  
+  if (sel.rangeCount > 0) {
+    refEl = sel.getRangeAt(0).commonAncestorContainer;
+    if (refEl.nodeType === 3) refEl = refEl.parentElement;
+    
+    // S'assurer qu'on est dans l'éditeur
+    if (!document.getElementById('visualEditor').contains(refEl)) {
+      refEl = document.getElementById('visualEditor');
+    }
+  } else {
+    refEl = document.getElementById('visualEditor');
+  }
+
+  if (refEl && refEl.nodeType === 1) {
+    const styles = window.getComputedStyle(refEl);
+    
+    // Mettre à jour le sélecteur de couleur du texte
+    if (textPicker) {
+      let textColor = styles.color || 'rgb(0, 0, 0)';
+      // Si c'est la couleur par défaut du navigateur, forcer le noir
+      if (textColor === 'rgb(17, 24, 39)') {
+        textColor = 'rgb(0, 0, 0)';
+      }
+      textPicker.value = rgbToHex(textColor);
+      updateColorDisplay('textColorPicker', textPicker.value);
+    }
+    
+    // Mettre à jour le sélecteur de couleur de fond
+    if (bgPicker) {
+      let bgColor = styles.backgroundColor || 'rgb(255, 255, 255)';
+      // Si c'est transparent ou la couleur par défaut, utiliser blanc
+      if (bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent' || bgColor === 'rgb(250, 250, 250)') {
+        bgColor = 'rgb(255, 255, 255)';
+      }
+      bgPicker.value = rgbToHex(bgColor);
+      updateColorDisplay('bgColorPicker', bgPicker.value);
+    }
+  } else {
+    // Valeurs par défaut si aucun élément
+    if (textPicker) {
+      textPicker.value = '#000000';
+      updateColorDisplay('textColorPicker', '#000000');
+    }
+    if (bgPicker) {
+      bgPicker.value = '#ffffff';
+      updateColorDisplay('bgColorPicker', '#ffffff');
+    }
+  }
+
+  // Mettre à jour l'état des boutons de formatage
+  const commands = {
+    'bold': 'bold',
+    'italic': 'italic', 
+    'underline': 'underline',
+    'strikeThrough': 'strikethrough',
+    'insertUnorderedList': 'insertUnorderedList',
+    'insertOrderedList': 'insertOrderedList',
+    'justifyLeft': 'justifyLeft',
+    'justifyCenter': 'justifyCenter',
+    'justifyRight': 'justifyRight',
+    'justifyFull': 'justifyFull'
+  };
+  
+  Object.entries(commands).forEach(([cmd, queryCmd]) => {
+    const btns = document.querySelectorAll(`[onclick*="formatText('${cmd}')"]`);
+    btns.forEach(btn => {
+      try {
+        if (document.queryCommandState(queryCmd)) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      } catch (e) {
+        btn.classList.remove('active');
+      }
+    });
+  });
+
+  // Mettre à jour les boutons de titre
+  try {
+    const format = document.queryCommandValue('formatBlock').toLowerCase();
+    document.querySelectorAll('.heading-btn').forEach(btn => {
+      const onclickAttr = btn.getAttribute('onclick');
+      if (onclickAttr) {
+        const match = onclickAttr.match(/'([^']+)'/g);
+        if (match && match.length >= 2) {
+          const tagName = match[1].replace(/'/g, '').toLowerCase();
+          if (tagName === format || (tagName === 'p' && (format === 'div' || format === ''))) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        }
+      }
+    });
+  } catch (e) {
+    // Ignorer les erreurs
+  }
+
+  // Mettre à jour le sélecteur de police
+  const fontSelect = document.getElementById('fontSelect');
+  if (fontSelect && refEl) {
+    const styles = window.getComputedStyle(refEl);
+    let fontFamily = styles.fontFamily;
+    
+    // Nettoyer le nom de la police
+    fontFamily = fontFamily.replace(/['"]/g, '').split(',')[0].trim();
+    
+    // Vérifier si la police existe dans la liste
+    let fontFound = false;
+    for (let option of fontSelect.options) {
+      if (option.value.toLowerCase() === fontFamily.toLowerCase()) {
+        fontSelect.value = option.value;
+        fontFound = true;
+        break;
+      }
+    }
+    
+    // Si la police n'est pas trouvée, utiliser Arial par défaut
+    if (!fontFound) {
+      fontSelect.value = 'Arial';
+    }
+  }
+
+  // Mettre à jour le sélecteur de taille
+  const fontSizeSelect = document.getElementById('fontSizeSelect');
+  if (fontSizeSelect && refEl) {
+    try {
+      const size = document.queryCommandValue('fontSize');
+      if (size) {
+        fontSizeSelect.value = size;
+      }
+    } catch (e) {
+      fontSizeSelect.value = '3';
+    }
+  }
+}
+
+/**
+ * Tooltip étendu pour les boutons désactivés
+ */
+document.addEventListener('DOMContentLoaded', () => {
+  // Ajouter des tooltips dynamiques pour les boutons de tableau désactivés
+  const tableActionBtns = document.querySelectorAll('.table-action-btn');
+  tableActionBtns.forEach(btn => {
+    const originalTooltip = btn.getAttribute('data-tooltip');
+    btn.addEventListener('mouseenter', () => {
+      if (!btn.parentElement.classList.contains('table-tools-active')) {
+        btn.setAttribute('data-tooltip', 'Cliquez dans un tableau pour activer');
+      } else {
+        btn.setAttribute('data-tooltip', originalTooltip);
+      }
+    });
+  });
+});
+</script>
