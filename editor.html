@@ -11,798 +11,9 @@
   <base target="_top">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&family=Roboto:wght@400;500&family=Lato:wght@400;700&family=Open+Sans:wght@400;600&family=Poppins:wght@400;600&family=Raleway:wght@400;600&family=Playfair+Display:wght@400;700&family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    :root {
-      --primary-color: #4F46E5;
-      --primary-hover: #6366F1;
-      --secondary-color: #F3F4F6;
-      --border-color: #E5E7EB;
-      --text-primary: #111827;
-      --text-secondary: #6B7280;
-      --success-color: #10B981;
-      --danger-color: #EF4444;
-      --toolbar-bg: #FFFFFF;
-      --toolbar-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.05);
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-    
-    html, body {
-      height: 100%;
-    }
-
-    body {
-      margin: 0;
-      padding: 0;
-      font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
-      color: var(--text-primary);
-      background: #FAFAFA;
-      overflow: hidden;
-    }
-    
-    .editor-wrapper {
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-      overflow: hidden;
-      position: relative;
-      background: white;
-    }
-    
-    .toolbar-container {
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      background: var(--toolbar-bg);
-      box-shadow: var(--toolbar-shadow);
-      border-bottom: 1px solid var(--border-color);
-    }
-    
-    .tabs {
-      display: flex;
-      background: #F9FAFB;
-      padding: 0;
-      border-bottom: 1px solid var(--border-color);
-    }
-    
-    .tab {
-      position: relative;
-      padding: 12px 24px;
-      cursor: pointer;
-      background: transparent;
-      border: none;
-      color: var(--text-secondary);
-      font-weight: 500;
-      font-size: 14px;
-      transition: all 0.2s ease;
-      border-bottom: 2px solid transparent;
-    }
-
-    .tab:hover {
-      color: var(--text-primary);
-      background: rgba(79, 70, 229, 0.05);
-    }
-
-    .tab.active {
-      color: var(--primary-color);
-      background: white;
-      border-bottom-color: var(--primary-color);
-    }
-
-    .tab.active::after {
-      content: '';
-      position: absolute;
-      bottom: -1px;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: var(--primary-color);
-    }
-    
-    .toolbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-      padding: 12px;
-      background: var(--toolbar-bg);
-      align-items: center;
-    }
-
-    .toolbar-group {
-      display: flex;
-      gap: 4px;
-      align-items: center;
-      padding: 0 8px;
-      border-radius: 8px;
-      background: #F9FAFB;
-      border: 1px solid transparent;
-      transition: all 0.2s ease;
-    }
-
-    .toolbar-group:hover {
-      background: #F3F4F6;
-      border-color: var(--border-color);
-    }
-
-    .toolbar button {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      padding: 0;
-      border: none;
-      border-radius: 6px;
-      background: transparent;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      color: var(--text-secondary);
-    }
-
-    .toolbar button:hover {
-      background: white;
-      color: var(--primary-color);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-      transform: translateY(-1px);
-    }
-
-    .toolbar button:active {
-      transform: translateY(0);
-      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-    }
-
-    .toolbar button.active {
-      background: var(--primary-color);
-      color: white;
-    }
-
-    .toolbar button svg {
-      width: 20px;
-      height: 20px;
-      stroke-width: 2;
-    }
-
-    /* Heading buttons special style */
-    .heading-btn {
-      width: auto !important;
-      padding: 0 12px !important;
-      font-weight: 600;
-      font-size: 14px;
-    }
-
-    .color-picker {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-    }
-
-    .color-picker .color-icon {
-      position: absolute;
-      pointer-events: none;
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--text-primary);
-      z-index: 1;
-    }
-
-    .color-picker svg.color-icon {
-      width: 18px;
-      height: 18px;
-    }
-
-    .toolbar input[type="color"],
-    .color-picker input[type="color"] {
-      width: 36px;
-      height: 36px;
-      padding: 0;
-      margin: 0;
-      border: none;
-      border-radius: 6px;
-      background: transparent;
-      cursor: pointer;
-      opacity: 1;
-      -webkit-appearance: none;
-      appearance: none;
-    }
-
-    .color-picker input[type="color"]::-webkit-color-swatch-wrapper {
-      padding: 0;
-    }
-
-    .color-picker input[type="color"]::-webkit-color-swatch {
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-    }
-
-    .toolbar select.font-select {
-      width: auto;
-      min-width: 120px;
-      height: 36px;
-      padding: 0 12px;
-      margin: 0;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      background: white;
-      cursor: pointer;
-      font-size: 14px;
-      color: var(--text-primary);
-      transition: all 0.2s ease;
-    }
-
-    .toolbar select.font-select:hover {
-      border-color: var(--primary-color);
-    }
-
-    .toolbar select.font-select:focus {
-      outline: none;
-      border-color: var(--primary-color);
-      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-    }
-
-    .toolbar .separator {
-      width: 1px;
-      height: 24px;
-      background: var(--border-color);
-      margin: 0 8px;
-    }
-
-    /* Tooltip */
-    .toolbar button::before {
-      content: attr(data-tooltip);
-      position: absolute;
-      bottom: 100%;
-      left: 50%;
-      transform: translateX(-50%) scale(0.8);
-      background: #1F2937;
-      color: white;
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      white-space: nowrap;
-      pointer-events: none;
-      opacity: 0;
-      transition: all 0.2s ease;
-      margin-bottom: 8px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-
-    .toolbar button::after {
-      content: '';
-      position: absolute;
-      bottom: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      border: 6px solid transparent;
-      border-top-color: #1F2937;
-      opacity: 0;
-      transition: all 0.2s ease;
-      margin-bottom: 2px;
-    }
-
-    .toolbar button:hover::before,
-    .toolbar button:hover::after {
-      opacity: 1;
-      transform: translateX(-50%) scale(1);
-    }
-    
-    .editor-content {
-      flex: 1;
-      overflow-y: auto;
-      background: #FAFAFA;
-      padding: 20px;
-    }
-    
-    .editor-container {
-      max-width: 900px;
-      margin: 0 auto;
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-      padding: 24px;
-      min-height: 400px;
-    }
-    
-    #visualEditor {
-      min-height: 350px;
-      outline: none;
-      font-size: 16px;
-      line-height: 1.6;
-      color: var(--text-primary);
-      font-family: Arial, 'Helvetica Neue', Helvetica, sans-serif;
-    }
-    
-    #visualEditor:focus {
-      outline: none;
-    }
-
-    /* Styles pour les tableaux dans l'éditeur */
-    #visualEditor table {
-      border-collapse: collapse;
-      margin: 16px 0;
-      width: 100%;
-      position: relative;
-    }
-    
-    #visualEditor table td,
-    #visualEditor table th {
-      min-width: 60px;
-      min-height: 30px;
-      padding: 8px;
-      border: 1px solid var(--border-color);
-      position: relative;
-      transition: all 0.2s ease;
-      resize: both;
-      overflow: auto;
-    }
-
-    #visualEditor table th {
-      background-color: #5B9BD5;
-      color: white;
-      font-weight: 600;
-    }
-
-    /* Effet de survol pour les cellules */
-    #visualEditor table td:hover,
-    #visualEditor table th:hover {
-      background-color: rgba(79, 70, 229, 0.05);
-      outline: 2px solid rgba(79, 70, 229, 0.3);
-      outline-offset: -2px;
-    }
-
-    /* Cellule active/sélectionnée */
-    #visualEditor table td:focus,
-    #visualEditor table th:focus,
-    #visualEditor table .active-cell {
-      outline: 2px solid var(--primary-color);
-      outline-offset: -2px;
-    }
-
-    /* Boutons d'action de tableau désactivés par défaut */
-    .table-action-btn {
-      opacity: 0.5;
-      pointer-events: none;
-    }
-
-    /* Boutons actifs quand dans un tableau */
-    .table-tools-active .table-action-btn {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    /* Indicateur de tableau sélectionné */
-    .table-selected {
-      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
-      border-radius: 4px;
-    }
-    
-    #htmlEditor {
-      width: 100%;
-      min-height: 350px;
-      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-      font-size: 14px;
-      line-height: 1.5;
-      border: none;
-      outline: none;
-      resize: vertical;
-      background: #1F2937;
-      color: #E5E7EB;
-      padding: 20px;
-      border-radius: 8px;
-    }
-    
-    .table-dialog {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: white;
-      border-radius: 12px;
-      padding: 24px;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-      z-index: 1000;
-      min-width: 400px;
-    }
-
-    .table-dialog h3 {
-      margin: 0 0 20px 0;
-      font-size: 18px;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .table-dialog .input-row {
-      display: flex;
-      gap: 20px;
-      margin-bottom: 20px;
-    }
-
-    .table-dialog .input-group {
-      flex: 1;
-    }
-
-    .table-dialog label {
-      display: block;
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--text-secondary);
-      margin-bottom: 6px;
-    }
-    
-    .table-dialog input {
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      font-size: 14px;
-      transition: all 0.2s ease;
-    }
-
-    .table-dialog input:focus {
-      outline: none;
-      border-color: var(--primary-color);
-      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-    }
-
-    /* Prévisualisation du tableau */
-    .table-preview {
-      margin: 20px 0;
-      padding: 16px;
-      background: #F9FAFB;
-      border-radius: 8px;
-      max-height: 200px;
-      overflow: auto;
-    }
-
-    .table-preview table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-    }
-
-    .table-preview td,
-    .table-preview th {
-      border: 1px solid #E5E7EB;
-      padding: 4px 8px;
-      text-align: center;
-    }
-
-    .table-preview th {
-      background: #5B9BD5;
-      color: white;
-      font-weight: 600;
-    }
-
-    .table-dialog .dialog-actions {
-      display: flex;
-      gap: 12px;
-      margin-top: 24px;
-      justify-content: flex-end;
-    }
-    
-    .overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(4px);
-      z-index: 999;
-    }
-    
-    .actions {
-      position: sticky;
-      bottom: 0;
-      background: white;
-      padding: 16px 20px;
-      display: flex;
-      gap: 12px;
-      border-top: 1px solid var(--border-color);
-      box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
-      align-items: center;
-    }
-    
-    .save-format {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    
-    .save-format label {
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--text-secondary);
-    }
-    
-    .save-format select {
-      padding: 8px 12px;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      font-size: 14px;
-      background: white;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .save-format select:hover {
-      border-color: var(--primary-color);
-    }
-
-    .save-format select:focus {
-      outline: none;
-      border-color: var(--primary-color);
-      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-    }
-    
-    .btn {
-      padding: 10px 20px;
-      border: none;
-      cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
-      border-radius: 6px;
-      transition: all 0.2s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .btn-primary {
-      background: var(--primary-color);
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: var(--primary-hover);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3);
-    }
-
-    .btn-primary:active {
-      transform: translateY(0);
-    }
-
-    .btn-primary:disabled {
-      background: #9CA3AF;
-      cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
-    }
-    
-    .btn-secondary {
-      background: white;
-      color: var(--text-secondary);
-      border: 1px solid var(--border-color);
-    }
-
-    .btn-secondary:hover {
-      background: var(--secondary-color);
-      color: var(--text-primary);
-      border-color: #D1D5DB;
-    }
-    
-    .loading {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      gap: 20px;
-    }
-
-    .loading-spinner {
-      width: 48px;
-      height: 48px;
-      border: 3px solid var(--border-color);
-      border-top-color: var(--primary-color);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
-    /* Navigation au clavier dans les tableaux */
-    #visualEditor table td[contenteditable="true"],
-    #visualEditor table th[contenteditable="true"] {
-      cursor: text;
-    }
-
-    /* Message d'aide pour les tableaux */
-    .table-help-message {
-      position: absolute;
-      bottom: 10px;
-      right: 10px;
-      background: rgba(31, 41, 55, 0.9);
-      color: white;
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-      pointer-events: none;
-    }
-
-    .table-tools-active .table-help-message {
-      opacity: 1;
-    }
-
-    /* Tooltip étendu pour les boutons désactivés */
-    .table-action-btn:not(.table-tools-active .table-action-btn)::before {
-      content: "Cliquez dans un tableau pour activer" !important;
-      width: auto;
-      white-space: nowrap;
-    }
-
-    /* Footer MEMORA */
-    .memora-footer {
-      background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #EC4899 100%);
-      padding: 12px 20px;
-      color: white;
-      text-align: center;
-      font-size: 13px;
-      position: relative;
-      overflow: hidden;
-      margin-top: auto;
-    }
-
-    .memora-footer::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 200%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-      animation: shimmer 6s infinite;
-    }
-
-    @keyframes shimmer {
-      0% { left: -100%; }
-      100% { left: 100%; }
-    }
-
-    .footer-content {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .made-with, .by-text {
-      opacity: 0.95;
-      font-weight: 400;
-    }
-
-    .heart-icon {
-      width: 16px;
-      height: 16px;
-      color: #ffffff;
-      animation: heartbeat 1.5s ease-in-out infinite;
-      filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.6));
-    }
-
-    @keyframes heartbeat {
-      0% { transform: scale(1); }
-      25% { transform: scale(1.15); }
-      40% { transform: scale(1); }
-      60% { transform: scale(1.15); }
-      100% { transform: scale(1); }
-    }
-
-    .memora-link {
-      color: white;
-      text-decoration: none;
-      font-size: 15px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      transition: all 0.3s ease;
-      padding: 2px 10px;
-      border-radius: 16px;
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    .memora-link:hover {
-      background: rgba(255, 255, 255, 0.25);
-      transform: translateY(-1px) scale(1.05);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-      border-color: rgba(255, 255, 255, 0.4);
-    }
-
-    .separator {
-      opacity: 0.6;
-      margin: 0 6px;
-    }
-
-    .location {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      opacity: 0.95;
-    }
-
-    .location-icon {
-      width: 14px;
-      height: 14px;
-    }
-
-    .maple-leaf {
-      position: absolute;
-      font-size: 20px;
-      opacity: 0.15;
-      animation: float 20s infinite ease-in-out;
-      filter: blur(0.5px);
-    }
-
-    @keyframes float {
-      0%, 100% { 
-        transform: translate(0, 0) rotate(0deg) scale(1); 
-      }
-      25% { 
-        transform: translate(30px, -20px) rotate(90deg) scale(1.1); 
-      }
-      50% { 
-        transform: translate(-20px, 15px) rotate(180deg) scale(0.9); 
-      }
-      75% { 
-        transform: translate(25px, 10px) rotate(270deg) scale(1.05); 
-      }
-    }
-
-    /* Responsive pour mobile */
-    @media (max-width: 600px) {
-      .memora-footer {
-        font-size: 12px;
-        padding: 10px 15px;
-      }
-      
-      .footer-content {
-        gap: 6px;
-      }
-      
-      .memora-link {
-        font-size: 14px;
-        padding: 2px 8px;
-      }
-      
-      .maple-leaf {
-        font-size: 16px;
-      }
-    }
-
-    .loading-text {
-      color: var(--text-secondary);
-      font-size: 14px;
-    }
-
-    /* Animations */
-    @keyframes slideIn {
-      from {
-        opacity: 0;
-        transform: translateY(10px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .editor-container {
-      animation: slideIn 0.3s ease;
-    }
-  </style>
+  
+  <!-- Inclusion des styles -->
+  <?!= include('styles') ?>
 </head>
 <body>
   <div id="loading" class="loading">
@@ -814,35 +25,34 @@
     <div class="editor-wrapper">
       <div class="toolbar-container">
         <div class="tabs">
-          <div class="tab active" onclick="switchTab('visual', event)">Éditeur Visuel</div>
-          <div class="tab" onclick="switchTab('html', event)">Code HTML</div>
+          <div class="tab active" onclick="switchTab('visual', event)">
+            <i class="fas fa-eye"></i> Éditeur Visuel
+          </div>
+          <div class="tab" onclick="switchTab('html', event)">
+            <i class="fas fa-code"></i> Code HTML
+          </div>
         </div>
         
         <div id="visualToolbar" class="toolbar">
+          <!-- Groupe de formatage de texte -->
           <div class="toolbar-group">
             <button onclick="formatText('bold')" data-tooltip="Gras (Ctrl/Cmd+B)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
-                <path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path>
-              </svg>
+              <i class="fas fa-bold"></i>
             </button>
             <button onclick="formatText('italic')" data-tooltip="Italique (Ctrl/Cmd+I)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <line x1="19" y1="4" x2="10" y2="4"></line>
-                <line x1="14" y1="20" x2="5" y2="20"></line>
-                <line x1="15" y1="4" x2="9" y2="20"></line>
-              </svg>
+              <i class="fas fa-italic"></i>
             </button>
             <button onclick="formatText('underline')" data-tooltip="Souligné (Ctrl/Cmd+U)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"></path>
-                <line x1="4" y1="21" x2="20" y2="21"></line>
-              </svg>
+              <i class="fas fa-underline"></i>
+            </button>
+            <button onclick="formatText('strikeThrough')" data-tooltip="Barré">
+              <i class="fas fa-strikethrough"></i>
             </button>
           </div>
 
           <div class="separator"></div>
 
+          <!-- Groupe de titres -->
           <div class="toolbar-group">
             <button class="heading-btn" onclick="formatText('formatBlock', 'h1')" data-tooltip="Titre 1">H1</button>
             <button class="heading-btn" onclick="formatText('formatBlock', 'h2')" data-tooltip="Titre 2">H2</button>
@@ -852,62 +62,50 @@
 
           <div class="separator"></div>
 
+          <!-- Groupe de listes -->
           <div class="toolbar-group">
             <button onclick="formatText('insertUnorderedList')" data-tooltip="Liste à puces">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <line x1="8" y1="6" x2="21" y2="6"></line>
-                <line x1="8" y1="12" x2="21" y2="12"></line>
-                <line x1="8" y1="18" x2="21" y2="18"></line>
-                <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                <line x1="3" y1="18" x2="3.01" y2="18"></line>
-              </svg>
+              <i class="fas fa-list-ul"></i>
             </button>
             <button onclick="formatText('insertOrderedList')" data-tooltip="Liste numérotée">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <line x1="10" y1="6" x2="21" y2="6"></line>
-                <line x1="10" y1="12" x2="21" y2="12"></line>
-                <line x1="10" y1="18" x2="21" y2="18"></line>
-                <path d="M4 6h1v4"></path>
-                <path d="M4 10h2"></path>
-                <path d="M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"></path>
-              </svg>
+              <i class="fas fa-list-ol"></i>
+            </button>
+            <button onclick="formatText('indent')" data-tooltip="Augmenter le retrait">
+              <i class="fas fa-indent"></i>
+            </button>
+            <button onclick="formatText('outdent')" data-tooltip="Diminuer le retrait">
+              <i class="fas fa-outdent"></i>
             </button>
           </div>
 
           <div class="separator"></div>
 
+          <!-- Groupe de liens -->
           <div class="toolbar-group">
             <button onclick="formatText('createLink')" data-tooltip="Insérer un lien">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
-              </svg>
+              <i class="fas fa-link"></i>
             </button>
             <button onclick="formatText('unlink')" data-tooltip="Supprimer le lien">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path d="m18.84 12.25 1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07 5.006 5.006 0 0 0-6.95 0l-1.72 1.71"></path>
-                <path d="m5.17 11.75-1.71 1.71a5.004 5.004 0 0 0 .12 7.07 5.006 5.006 0 0 0 6.95 0l1.71-1.71"></path>
-                <line x1="8" y1="2" x2="8" y2="5"></line>
-                <line x1="2" y1="8" x2="5" y2="8"></line>
-                <line x1="16" y1="19" x2="16" y2="22"></line>
-                <line x1="19" y1="16" x2="22" y2="16"></line>
-              </svg>
+              <i class="fas fa-unlink"></i>
+            </button>
+            <button onclick="insertImage()" data-tooltip="Insérer une image">
+              <i class="fas fa-image"></i>
             </button>
           </div>
 
           <div class="separator"></div>
 
+          <!-- Groupe de couleurs et police -->
           <div class="toolbar-group">
             <label class="color-picker" data-tooltip="Couleur du texte">
               <span class="color-icon">A</span>
               <input type="color" id="textColorPicker" value="#000000">
+              <div class="color-display"></div>
             </label>
             <label class="color-picker" data-tooltip="Couleur de fond">
-              <svg class="color-icon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M18 4V3c0-.55-.45-1-1-1H5c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h12c.55 0 1-.45 1-1V6h1v4H9v11c0 .55.45 1 1 1h2c.55 0 1-.45 1-1v-9h8V4h-3z"/>
-              </svg>
+              <i class="fas fa-fill-drip color-icon" style="color: #374151;"></i>
               <input type="color" id="bgColorPicker" value="#ffffff">
+              <div class="color-display"></div>
             </label>
             <select id="fontSelect" class="font-select" data-tooltip="Police">
               <option value="Arial">Arial</option>
@@ -926,100 +124,80 @@
               <option value="Playfair Display">Playfair Display</option>
               <option value="Merriweather">Merriweather</option>
             </select>
+            <select id="fontSizeSelect" class="font-size-select" data-tooltip="Taille">
+              <option value="1">Très petit</option>
+              <option value="2">Petit</option>
+              <option value="3" selected>Normal</option>
+              <option value="4">Grand</option>
+              <option value="5">Très grand</option>
+              <option value="6">Énorme</option>
+              <option value="7">Gigantesque</option>
+            </select>
           </div>
 
           <div class="separator"></div>
 
+          <!-- Groupe de tableaux -->
           <div class="toolbar-group" id="tableTools">
             <button onclick="showTableDialog()" data-tooltip="Insérer un tableau">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="3" y1="9" x2="21" y2="9"></line>
-                <line x1="3" y1="15" x2="21" y2="15"></line>
-                <line x1="9" y1="3" x2="9" y2="21"></line>
-                <line x1="15" y1="3" x2="15" y2="21"></line>
-              </svg>
+              <i class="fas fa-table"></i>
             </button>
             <button onclick="addTableRow()" data-tooltip="Ajouter une ligne" class="table-action-btn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="3" y1="15" x2="21" y2="15"></line>
-                <path d="M12 15v6m-3-3h6"></path>
-              </svg>
+              <i class="fas fa-plus-square"></i> <i class="fas fa-arrows-alt-v"></i>
             </button>
             <button onclick="addTableColumn()" data-tooltip="Ajouter une colonne" class="table-action-btn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="15" y1="3" x2="15" y2="21"></line>
-                <path d="M15 12h6m-3-3v6"></path>
-              </svg>
+              <i class="fas fa-plus-square"></i> <i class="fas fa-arrows-alt-h"></i>
             </button>
             <button onclick="deleteTableRow()" data-tooltip="Supprimer la ligne" class="table-action-btn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="3" y1="15" x2="21" y2="15"></line>
-                <line x1="9" y1="15" x2="15" y2="15" stroke-width="3"></line>
-              </svg>
+              <i class="fas fa-minus-square"></i> <i class="fas fa-arrows-alt-v"></i>
             </button>
             <button onclick="deleteTableColumn()" data-tooltip="Supprimer la colonne" class="table-action-btn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="15" y1="3" x2="15" y2="21"></line>
-                <line x1="15" y1="9" x2="15" y2="15" stroke-width="3"></line>
-              </svg>
+              <i class="fas fa-minus-square"></i> <i class="fas fa-arrows-alt-h"></i>
             </button>
             <button onclick="deleteTable()" data-tooltip="Supprimer le tableau" class="table-action-btn">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="9" y1="9" x2="15" y2="15"></line>
-                <line x1="15" y1="9" x2="9" y2="15"></line>
-              </svg>
+              <i class="fas fa-trash-alt"></i>
             </button>
           </div>
 
           <div class="separator"></div>
 
+          <!-- Groupe d'alignement -->
           <div class="toolbar-group">
             <button onclick="formatText('justifyLeft')" data-tooltip="Aligner à gauche">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <line x1="17" y1="10" x2="3" y2="10"></line>
-                <line x1="21" y1="6" x2="3" y2="6"></line>
-                <line x1="21" y1="14" x2="3" y2="14"></line>
-                <line x1="17" y1="18" x2="3" y2="18"></line>
-              </svg>
+              <i class="fas fa-align-left"></i>
             </button>
             <button onclick="formatText('justifyCenter')" data-tooltip="Centrer">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <line x1="18" y1="10" x2="6" y2="10"></line>
-                <line x1="21" y1="6" x2="3" y2="6"></line>
-                <line x1="21" y1="14" x2="3" y2="14"></line>
-                <line x1="18" y1="18" x2="6" y2="18"></line>
-              </svg>
+              <i class="fas fa-align-center"></i>
             </button>
             <button onclick="formatText('justifyRight')" data-tooltip="Aligner à droite">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <line x1="21" y1="10" x2="7" y2="10"></line>
-                <line x1="21" y1="6" x2="3" y2="6"></line>
-                <line x1="21" y1="14" x2="3" y2="14"></line>
-                <line x1="21" y1="18" x2="7" y2="18"></line>
-              </svg>
+              <i class="fas fa-align-right"></i>
+            </button>
+            <button onclick="formatText('justifyFull')" data-tooltip="Justifier">
+              <i class="fas fa-align-justify"></i>
             </button>
           </div>
 
           <div class="separator"></div>
 
+          <!-- Groupe de templates -->
+          <div class="toolbar-group">
+            <button onclick="showTemplateDialog()" data-tooltip="Insérer un template">
+              <i class="fas fa-file-import"></i>
+            </button>
+            <button onclick="saveAsTemplate()" data-tooltip="Sauvegarder comme template">
+              <i class="fas fa-save"></i>
+            </button>
+          </div>
+
+          <div class="separator"></div>
+
+          <!-- Groupe annuler/refaire -->
           <div class="toolbar-group">
             <button onclick="undo()" data-tooltip="Annuler (Ctrl/Cmd+Z)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <polyline points="9 14 4 9 9 4"></polyline>
-                <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
-              </svg>
+              <i class="fas fa-undo"></i>
             </button>
             <button onclick="redo()" data-tooltip="Refaire (Ctrl/Cmd+Y)">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <polyline points="15 14 20 9 15 4"></polyline>
-                <path d="M4 20v-7a4 4 0 0 1 4-4h12"></path>
-              </svg>
+              <i class="fas fa-redo"></i>
             </button>
           </div>
         </div>
@@ -1041,18 +219,11 @@
       
       <div class="actions">
         <button class="btn btn-primary" onclick="saveContent()" title="Sauvegarder (Ctrl/Cmd+S)">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-            <polyline points="17 21 17 13 7 13 7 21"></polyline>
-            <polyline points="7 3 7 8 15 8"></polyline>
-          </svg>
+          <i class="fas fa-save"></i>
           Sauvegarder
         </button>
         <button class="btn btn-secondary" onclick="if(confirm('Êtes-vous sûr de vouloir annuler tous les changements ?')) google.script.host.close()">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
+          <i class="fas fa-times"></i>
           Annuler
         </button>
         <div class="save-format">
@@ -1080,10 +251,7 @@
           </a>
           <span class="separator">•</span>
           <span class="location">
-            <svg class="location-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-              <circle cx="12" cy="9" r="2.5"/>
-            </svg>
+            <i class="fas fa-map-marker-alt location-icon"></i>
             Canada
           </span>
         </div>
@@ -1092,1220 +260,111 @@
   </div>
   
   <!-- Boîte de dialogue pour créer un tableau -->
-  <div id="tableDialog" style="display: none;">
-    <div class="overlay" onclick="hideTableDialog()"></div>
-    <div class="table-dialog">
-      <h3>Créer un tableau</h3>
-      <div class="input-row">
-        <div class="input-group">
-          <label for="tableRows">Nombre de lignes</label>
-          <input type="number" id="tableRows" value="3" min="1" max="20" oninput="updateTablePreview()">
+  <div id="tableDialog" class="dialog-overlay" style="display: none;">
+    <div class="dialog-backdrop" onclick="hideTableDialog()"></div>
+    <div class="dialog-container table-dialog">
+      <div class="dialog-header">
+        <h3><i class="fas fa-table"></i> Créer un tableau</h3>
+        <button class="dialog-close" onclick="hideTableDialog()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="dialog-body">
+        <div class="input-row">
+          <div class="input-group">
+            <label for="tableRows">Nombre de lignes</label>
+            <input type="number" id="tableRows" value="3" min="1" max="20" oninput="updateTablePreview()">
+          </div>
+          <div class="input-group">
+            <label for="tableCols">Nombre de colonnes</label>
+            <input type="number" id="tableCols" value="3" min="1" max="10" oninput="updateTablePreview()">
+          </div>
         </div>
-        <div class="input-group">
-          <label for="tableCols">Nombre de colonnes</label>
-          <input type="number" id="tableCols" value="3" min="1" max="10" oninput="updateTablePreview()">
+        <div class="table-style-options">
+          <label>
+            <input type="checkbox" id="tableHeaders" checked onchange="updateTablePreview()">
+            Inclure une ligne d'en-tête
+          </label>
+          <label>
+            <input type="checkbox" id="tableBorders" checked onchange="updateTablePreview()">
+            Bordures visibles
+          </label>
+        </div>
+        <div class="table-preview" id="tablePreview">
+          <!-- La prévisualisation sera générée ici -->
         </div>
       </div>
-      <div class="table-preview" id="tablePreview">
-        <!-- La prévisualisation sera générée ici -->
-      </div>
-      <div class="dialog-actions">
+      <div class="dialog-footer">
         <button class="btn btn-secondary" onclick="hideTableDialog()">Annuler</button>
-        <button class="btn btn-primary" onclick="insertTable()">Créer le tableau</button>
+        <button class="btn btn-primary" onclick="insertTable()">
+          <i class="fas fa-check"></i> Créer le tableau
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Boîte de dialogue pour les templates -->
+  <div id="templateDialog" class="dialog-overlay" style="display: none;">
+    <div class="dialog-backdrop" onclick="hideTemplateDialog()"></div>
+    <div class="dialog-container template-dialog">
+      <div class="dialog-header">
+        <h3><i class="fas fa-file-import"></i> Insérer un template</h3>
+        <button class="dialog-close" onclick="hideTemplateDialog()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="dialog-body">
+        <div class="template-list" id="templateList">
+          <!-- Les templates seront chargés ici -->
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn btn-secondary" onclick="hideTemplateDialog()">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Boîte de dialogue pour sauvegarder comme template -->
+  <div id="saveTemplateDialog" class="dialog-overlay" style="display: none;">
+    <div class="dialog-backdrop" onclick="hideSaveTemplateDialog()"></div>
+    <div class="dialog-container save-template-dialog">
+      <div class="dialog-header">
+        <h3><i class="fas fa-save"></i> Sauvegarder comme template</h3>
+        <button class="dialog-close" onclick="hideSaveTemplateDialog()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="dialog-body">
+        <div class="input-group">
+          <label for="templateName">Nom du template</label>
+          <input type="text" id="templateName" placeholder="Mon template">
+        </div>
+        <div class="input-group">
+          <label for="templateDescription">Description (optionnelle)</label>
+          <textarea id="templateDescription" placeholder="Description du template..." rows="3"></textarea>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn btn-secondary" onclick="hideSaveTemplateDialog()">Annuler</button>
+        <button class="btn btn-primary" onclick="confirmSaveTemplate()">
+          <i class="fas fa-save"></i> Sauvegarder
+        </button>
       </div>
     </div>
   </div>
   
   <script>
-    let currentTab = 'visual';
-    // Échapper les chevrons pour éviter toute rupture de la balise <script>
+    // Variables globales initiales
     let cellData = <?!= JSON.stringify(cellData).replace(/</g, '\x3c') ?>;
-    let undoStack = [];
-    let redoStack = [];
-    let maxUndoSteps = 50;
-    let isExecutingCommand = false;
-
-    // Initialisation
-    window.onload = function() {
-      loadContent(cellData);
-
-      // Ajouter les écouteurs pour undo/redo
-      document.addEventListener('keydown', handleKeyPress);
-
-      // Ajouter un écouteur pour détecter quand on est dans un tableau
-      const visual = document.getElementById('visualEditor');
-      const code = document.getElementById('htmlEditor');
-
-      // Écouteurs pour la mise à jour de l'état de la toolbar
-      visual.addEventListener('click', handleSelectionChange);
-      visual.addEventListener('keyup', handleSelectionChange);
-      visual.addEventListener('mouseup', handleSelectionChange);
-      visual.addEventListener('focus', handleSelectionChange);
-      visual.addEventListener('blur', handleSelectionChange);
-      document.addEventListener('selectionchange', () => {
-        if (currentTab === 'visual') {
-          handleSelectionChange();
-        }
-      });
-
-      // Garder les deux vues synchronisées
-      visual.addEventListener('input', () => {
-        if (currentTab === 'visual') {
-          syncContent();
-          handleSelectionChange();
-        }
-      });
-      
-      code.addEventListener('input', () => {
-        if (currentTab === 'html') {
-          syncContent();
-        }
-      });
-
-      const textPicker = document.getElementById('textColorPicker');
-      const bgPicker = document.getElementById('bgColorPicker');
-
-      textPicker.addEventListener('input', e => {
-        if (currentTab === 'visual') {
-          setTextColor(e.target.value);
-          updateColorIcon('textColorPicker');
-        }
-      });
-      
-      bgPicker.addEventListener('input', e => {
-        if (currentTab === 'visual') {
-          setCellBackground(e.target.value);
-          updateColorIcon('bgColorPicker');
-        }
-      });
-
-      // Initialisation des couleurs
-      updateColorIcon('textColorPicker');
-      updateColorIcon('bgColorPicker');
-      
-      // Mise à jour initiale de l'état de la toolbar
-      setTimeout(() => {
-        handleSelectionChange();
-        updateToolbarState();
-      }, 100);
-      
-      document.getElementById('fontSelect').addEventListener('change', e => {
-        if (currentTab === 'visual') {
-          setFont(e.target.value);
-        }
-      });
-    };
-    
-    function handleKeyPress(e) {
-      // Ctrl/Cmd + Z pour annuler
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-        e.preventDefault();
-        undo();
-      }
-      // Ctrl/Cmd + Y ou Ctrl/Cmd + Shift + Z pour refaire
-      else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-        e.preventDefault();
-        redo();
-      }
-      // Ctrl/Cmd + S pour sauvegarder
-      else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        saveContent();
-      }
-    }
-    
-    function saveState() {
-      if (isExecutingCommand) return;
-      
-      const content = document.getElementById('visualEditor').innerHTML;
-      
-      // Ne pas sauvegarder si c'est le même contenu que le dernier état
-      if (undoStack.length > 0 && undoStack[undoStack.length - 1] === content) {
-        return;
-      }
-      
-      undoStack.push(content);
-      
-      // Limiter la taille de la pile
-      if (undoStack.length > maxUndoSteps) {
-        undoStack.shift();
-      }
-      
-      // Vider la pile de redo car on a fait une nouvelle action
-      redoStack = [];
-    }
-    
-    function undo() {
-      if (undoStack.length > 1) {
-        isExecutingCommand = true;
-        
-        // Sauvegarder l'état actuel dans redo
-        const currentState = undoStack.pop();
-        redoStack.push(currentState);
-        
-        // Restaurer l'état précédent
-        const previousState = undoStack[undoStack.length - 1];
-        document.getElementById('visualEditor').innerHTML = previousState;
-        
-        // Synchroniser avec l'onglet Code
-        if (currentTab === 'visual') {
-          document.getElementById('htmlEditor').value = previousState;
-        }
-        
-        setTimeout(() => { isExecutingCommand = false; }, 100);
-      }
-    }
-    
-    function redo() {
-      if (redoStack.length > 0) {
-        isExecutingCommand = true;
-        
-        const stateToRestore = redoStack.pop();
-        undoStack.push(stateToRestore);
-        document.getElementById('visualEditor').innerHTML = stateToRestore;
-        
-        // Synchroniser avec l'onglet Code
-        if (currentTab === 'visual') {
-          document.getElementById('htmlEditor').value = stateToRestore;
-        }
-        
-        setTimeout(() => { isExecutingCommand = false; }, 100);
-      }
-    }
-    
-    function loadContent(data) {
-      cellData = data;
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('editorApp').style.display = 'block';
-      
-      const content = data.content || '';
-      
-      // Détection rapide du format - optimisée
-      let detectedFormat = 'html';
-      
-      // Vérification rapide pour Markdown
-      if (content.length < 5000) { // Ne vérifier que pour les contenus raisonnables
-        const hasHtmlTags = /<[a-z][\s\S]*>/i.test(content);
-        const hasMarkdownTable = /\|.*\|/.test(content) && /\|[\s:|-]+\|/.test(content);
-        const hasMarkdownSyntax = !hasHtmlTags && (
-          /^#{1,6}\s/m.test(content) ||
-          /\*\*[^*]+\*\*/.test(content) ||
-          /^\s*[-*]\s+/m.test(content) ||
-          hasMarkdownTable
-        );
-        
-        if (hasMarkdownSyntax || hasMarkdownTable) {
-          detectedFormat = 'markdown';
-        }
-      }
-      
-      // Définir le format de sauvegarde
-      document.getElementById('saveFormat').value = detectedFormat;
-      
-      // Charger le contenu - une seule conversion
-      if (detectedFormat === 'markdown') {
-        const html = markdownToHtml(content);
-        document.getElementById('visualEditor').innerHTML = html;
-        document.getElementById('htmlEditor').value = formatHtml(html);
-      } else {
-        document.getElementById('visualEditor').innerHTML = content;
-        document.getElementById('htmlEditor').value = formatHtml(content);
-      }
-      
-      // Définir la police par défaut si le contenu est vide
-      if (!content.trim()) {
-        document.getElementById('visualEditor').style.fontFamily = 'Arial, sans-serif';
-      }
-      
-      // Rendre les cellules éditables en une seule passe
-      makeTableCellsEditable();
-      
-      // Initialiser l'état avec un délai minimal
-      requestAnimationFrame(() => {
-        saveState();
-        initializeObserver();
-        document.getElementById('visualEditor').focus();
-        
-        // Mettre à jour l'état initial de la toolbar
-        setTimeout(() => {
-          handleSelectionChange();
-          updateToolbarState();
-        }, 100);
-      });
-    }
-    
-    function initializeObserver() {
-      const visualEditor = document.getElementById('visualEditor');
-      
-      // Utiliser un seul observateur avec debounce
-      let debounceTimer;
-      const observer = new MutationObserver(() => {
-        if (!isExecutingCommand) {
-          clearTimeout(debounceTimer);
-          debounceTimer = setTimeout(saveState, 300);
-        }
-      });
-      
-      observer.observe(visualEditor, {
-        childList: true,
-        subtree: true,
-        characterData: true
-      });
-    }
-    
-    function makeTableCellsEditable() {
-      const tables = document.querySelectorAll('#visualEditor table');
-      tables.forEach(table => {
-        const cells = table.querySelectorAll('td:not([contenteditable="true"]), th:not([contenteditable="true"])');
-        cells.forEach(cell => {
-          cell.setAttribute('contenteditable', 'true');
-        });
-      });
-    }
-    
-    function showError(error) {
-      alert('Erreur: ' + error);
-    }
-    
-    function switchTab(tab, event) {
-      // Synchroniser le contenu avant de changer d'onglet
-      if (currentTab === 'visual') {
-        const html = document.getElementById('visualEditor').innerHTML;
-        document.getElementById('htmlEditor').value = formatHtml(html);
-      } else if (currentTab === 'html') {
-        const html = document.getElementById('htmlEditor').value;
-        document.getElementById('visualEditor').innerHTML = html;
-        makeTableCellsEditable();
-      }
-      
-      // Cacher tous les onglets
-      document.getElementById('visualTab').style.display = 'none';
-      document.getElementById('htmlTab').style.display = 'none';
-      
-      // Afficher l'onglet sélectionné
-      document.getElementById(tab + 'Tab').style.display = 'block';
-      
-      // Gérer la visibilité de la toolbar
-      document.getElementById('visualToolbar').style.display = tab === 'visual' ? 'flex' : 'none';
-      
-      // Mettre à jour les classes des onglets
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      if (event && event.target) {
-        event.target.classList.add('active');
-      }
-      
-      currentTab = tab;
-      
-      // Si on passe à l'onglet visuel, mettre à jour l'état de la toolbar
-      if (tab === 'visual') {
-        setTimeout(() => {
-          handleSelectionChange();
-          updateToolbarState();
-        }, 50);
-      }
-      
-      // Si on passe à l'onglet code, s'assurer que le code est bien formaté
-      if (tab === 'html') {
-        const currentHtml = document.getElementById('htmlEditor').value;
-        if (currentHtml && !currentHtml.includes('\n')) {
-          // Si le HTML n'est pas formaté, le formater
-          document.getElementById('htmlEditor').value = formatHtml(currentHtml);
-        }
-      }
-    }
-    
-    let syncTimer;
-    function syncContent() {
-      // Debounce la synchronisation pour éviter les appels multiples
-      clearTimeout(syncTimer);
-      syncTimer = setTimeout(() => {
-        if (currentTab === 'visual') {
-          const html = document.getElementById('visualEditor').innerHTML;
-          const formattedHtml = formatHtml(html);
-          document.getElementById('htmlEditor').value = formattedHtml;
-        } else if (currentTab === 'html') {
-          const html = document.getElementById('htmlEditor').value;
-          document.getElementById('visualEditor').innerHTML = html;
-          // Rendre les cellules éditables si des tableaux ont été ajoutés via le code
-          makeTableCellsEditable();
-          // Mettre à jour l'état de la toolbar après modification du HTML
-          setTimeout(() => {
-            handleSelectionChange();
-            updateToolbarState();
-          }, 50);
-        }
-      }, 50);  // Réduit de 100ms à 50ms pour plus de réactivité
-    }
-    
-    function formatText(command, value) {
-      if (currentTab === 'visual' && !isExecutingCommand) {
-        saveState();
-      }
-      
-      if (command === 'createLink') {
-        let defaultUrl = '';
-        let anchorEl = null;
-        const sel = window.getSelection();
-        
-        if (sel.rangeCount) {
-          let node = sel.anchorNode;
-          if (node.nodeType === 3) node = node.parentElement;
-          
-          // Chercher un lien parent
-          while (node && node !== document.getElementById('visualEditor')) {
-            if (node.tagName === 'A') {
-              anchorEl = node;
-              defaultUrl = anchorEl.getAttribute('href') || '';
-              break;
-            }
-            node = node.parentElement;
-          }
-          
-          // Si pas de lien parent, chercher dans la sélection
-          if (!defaultUrl && !sel.isCollapsed) {
-            const range = sel.getRangeAt(0);
-            const links = range.cloneContents().querySelectorAll('a');
-            if (links.length > 0) {
-              defaultUrl = links[0].getAttribute('href') || '';
-            }
-          }
-        }
-        
-        value = prompt('Entrez l\'URL:', defaultUrl);
-        if (value === null) return; // Annulé
-        
-        isExecutingCommand = true;
-        if (anchorEl && (sel.isCollapsed || (anchorEl.contains(sel.anchorNode) && anchorEl.contains(sel.focusNode)))) {
-          anchorEl.setAttribute('href', value);
-        } else {
-          document.execCommand('createLink', false, value);
-        }
-        isExecutingCommand = false;
-      } else {
-        isExecutingCommand = true;
-        document.execCommand(command, false, value);
-        isExecutingCommand = false;
-      }
-      
-      // Sauvegarde immédiate sans délai
-      if (currentTab === 'visual') {
-        saveState();
-        updateToolbarState();
-      }
-    }
-
-    function setTextColor(color) {
-      formatText('foreColor', color);
-    }
-
-    function setCellBackground(color) {
-      const cells = getSelectedCells();
-      const targets = cells.length ? cells : [getParentCell()].filter(Boolean);
-      if (targets.length) {
-        saveState();
-        targets.forEach(c => c.style.backgroundColor = color);
-        saveState();
-      }
-    }
-
-    function setFont(font) {
-      formatText('fontName', font);
-    }
-
-    function updateColorIcon(pickerId) {
-      const input = document.getElementById(pickerId);
-      if (!input) return;
-      const icon = input.previousElementSibling;
-      if (!icon) return;
-      
-      // Obtenir la couleur directement depuis l'input
-      const color = input.value;
-      
-      // Convertir la couleur hexadécimale en RGB
-      let r, g, b;
-      if (color.startsWith('#')) {
-        r = parseInt(color.substr(1, 2), 16);
-        g = parseInt(color.substr(3, 2), 16);
-        b = parseInt(color.substr(5, 2), 16);
-      } else {
-        // Couleur par défaut si non valide
-        r = g = b = 0;
-      }
-      
-      // Calculer la luminosité
-      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-      
-      // Définir la couleur de l'icône en fonction de la luminosité
-      icon.style.color = brightness > 128 ? '#000000' : '#FFFFFF';
-    }
-
-    function htmlToMarkdown(html) {
-      // Retour rapide si pas de HTML
-      if (!html || !html.includes('<')) {
-        return html.trim();
-      }
-
-      let md = html;
-      
-      // Utiliser un parser temporaire pour une conversion plus rapide
-      const temp = document.createElement('div');
-      temp.innerHTML = html;
-      
-      // Convertir les tableaux en premier (plus complexe)
-      const tables = temp.querySelectorAll('table');
-      tables.forEach(table => {
-        let markdownTable = '\n\n';
-        const rows = table.querySelectorAll('tr');
-        
-        if (rows.length > 0) {
-          // Headers
-          const headers = [];
-          const firstRowCells = rows[0].querySelectorAll('th, td');
-          firstRowCells.forEach(cell => {
-            headers.push(cell.textContent.trim());
-          });
-          
-          if (headers.length > 0) {
-            markdownTable += '| ' + headers.join(' | ') + ' |\n';
-            markdownTable += '|' + headers.map(() => ' --- ').join('|') + '|\n';
-            
-            // Body rows
-            for (let i = 1; i < rows.length; i++) {
-              const cells = rows[i].querySelectorAll('td, th');
-              const rowData = [];
-              cells.forEach(cell => {
-                rowData.push(cell.textContent.trim());
-              });
-              if (rowData.length > 0) {
-                markdownTable += '| ' + rowData.join(' | ') + ' |\n';
-              }
-            }
-          }
-        }
-        
-        // Remplacer le tableau par un placeholder
-        const placeholder = `<!--TABLE_${Math.random()}-->`;
-        table.outerHTML = placeholder;
-        md = md.replace(placeholder, markdownTable);
-      });
-      
-      // Conversions simples avec des regex optimisées
-      md = temp.innerHTML;
-      
-      // Remplacements en une seule passe
-      const replacements = [
-        [/&nbsp;/g, ' '],
-        [/&amp;/g, '&'],
-        [/&lt;/g, '<'],
-        [/&gt;/g, '>'],
-        [/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n'],
-        [/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n'],
-        [/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n'],
-        [/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n\n'],
-        [/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n\n'],
-        [/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n\n'],
-        [/<(strong|b)[^>]*>(.*?)<\/(strong|b)>/gi, '**$2**'],
-        [/<(em|i)[^>]*>(.*?)<\/(em|i)>/gi, '*$2*'],
-        [/<a[^>]+href=["']([^"']*?)["'][^>]*>(.*?)<\/a>/gi, '[$2]($1)'],
-        [/<img[^>]+src=["']([^"']*?)["'][^>]*alt=["']([^"']*?)["'][^>]*>/gi, '![$2]($1)'],
-        [/<img[^>]+src=["']([^"']*?)["'][^>]*>/gi, '![]($1)'],
-        [/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n'],
-        [/<br[^>]*>/gi, '  \n'],
-        [/<\/?div[^>]*>/gi, ''],
-        [/<\/?span[^>]*>/gi, '']
-      ];
-      
-      replacements.forEach(([regex, replacement]) => {
-        md = md.replace(regex, replacement);
-      });
-      
-      // Nettoyage final
-      return md.replace(/\n{3,}/g, '\n\n').trim();
-    }
-
-    function formatHtml(html) {
-      // Nettoyer le HTML
-      html = html.replace(/>\s+</g, '><').trim();
-      
-      // Balises qui ne doivent pas avoir de retour à la ligne après elles
-      const inlineTags = ['a', 'span', 'strong', 'b', 'em', 'i', 'u', 'code', 'small', 'sub', 'sup'];
-      
-      // Balises auto-fermantes
-      const selfClosingTags = ['br', 'hr', 'img', 'input', 'meta', 'link'];
-      
-      let formatted = '';
-      let indent = 0;
-      let inlineContext = false;
-      
-      // Parser le HTML caractère par caractère
-      let i = 0;
-      while (i < html.length) {
-        if (html[i] === '<') {
-          // Trouver la fin de la balise
-          let tagEnd = html.indexOf('>', i);
-          if (tagEnd === -1) {
-            formatted += html.substring(i);
-            break;
-          }
-          
-          let tag = html.substring(i, tagEnd + 1);
-          let tagName = tag.match(/<\/?([a-z0-9]+)/i);
-          tagName = tagName ? tagName[1].toLowerCase() : '';
-          
-          // Déterminer si c'est une balise fermante
-          let isClosing = tag.startsWith('</');
-          let isSelfClosing = selfClosingTags.includes(tagName) || tag.endsWith('/>');
-          let isInline = inlineTags.includes(tagName);
-          
-          // Ajuster l'indentation pour les balises fermantes
-          if (isClosing && !isInline) {
-            indent = Math.max(0, indent - 1);
-          }
-          
-          // Ajouter l'indentation si ce n'est pas une balise inline
-          if (!inlineContext && formatted.length > 0 && formatted[formatted.length - 1] !== '\n') {
-            formatted += '\n';
-          }
-          
-          if (!isInline || !inlineContext) {
-            formatted += '  '.repeat(indent);
-          }
-          
-          formatted += tag;
-          
-          // Ajuster l'indentation pour les balises ouvrantes
-          if (!isClosing && !isSelfClosing && !isInline) {
-            indent++;
-          }
-          
-          // Gérer le contexte inline
-          if (isInline) {
-            inlineContext = !isClosing;
-          } else {
-            inlineContext = false;
-          }
-          
-          i = tagEnd + 1;
-        } else {
-          // Texte entre les balises
-          let nextTag = html.indexOf('<', i);
-          if (nextTag === -1) nextTag = html.length;
-          
-          let text = html.substring(i, nextTag).trim();
-          if (text) {
-            if (!inlineContext && formatted.length > 0 && formatted[formatted.length - 1] !== '\n') {
-              formatted += '\n' + '  '.repeat(indent);
-            }
-            formatted += text;
-          }
-          
-          i = nextTag;
-        }
-      }
-      
-      // Nettoyer les lignes vides multiples
-      formatted = formatted.replace(/\n\s*\n\s*\n/g, '\n\n');
-      
-      return formatted.trim();
-    }
-    
-    function markdownToHtml(markdown) {
-      // Retour rapide si déjà du HTML
-      if (!markdown || markdown.includes('<table') && markdown.includes('</table>')) {
-        return markdown;
-      }
-      
-      let html = markdown;
-      
-      // Conversions dans l'ordre optimal
-      // 1. Tableaux Markdown (plus complexe, fait en premier)
-      if (html.includes('|')) {
-        const tableRegex = /\|(.+)\|\n\|([\s\S]+?)\n((?:\|.+\|\n?)+)/g;
-        html = html.replace(tableRegex, (match, headerLine, separatorLine, bodyLines) => {
-          const headers = headerLine.split('|').map(h => h.trim()).filter(h => h);
-          const rows = bodyLines.trim().split('\n').map(line => 
-            line.split('|').map(cell => cell.trim()).filter(cell => cell !== undefined)
-          );
-          
-          let table = '<table border="1" style="border-collapse: collapse; width: 100%;">\n<thead>\n<tr>\n';
-          headers.forEach(header => {
-            table += `<th contenteditable="true" style="border: 1px solid #ddd; padding: 8px; background-color: #f2f2f2;">${header}</th>\n`;
-          });
-          table += '</tr>\n</thead>\n<tbody>\n';
-          
-          rows.forEach(row => {
-            if (row.length > 0) {
-              table += '<tr>\n';
-              for (let i = 0; i < headers.length; i++) {
-                table += `<td contenteditable="true" style="border: 1px solid #ddd; padding: 8px;">${row[i] || ''}</td>\n`;
-              }
-              table += '</tr>\n';
-            }
-          });
-          table += '</tbody>\n</table>';
-          
-          return table;
-        });
-      }
-      
-      // 2. Remplacements simples en une seule passe
-      const simpleReplacements = [
-        [/^###### (.*?)$/gm, '<h6>$1</h6>'],
-        [/^##### (.*?)$/gm, '<h5>$1</h5>'],
-        [/^#### (.*?)$/gm, '<h4>$1</h4>'],
-        [/^### (.*?)$/gm, '<h3>$1</h3>'],
-        [/^## (.*?)$/gm, '<h2>$1</h2>'],
-        [/^# (.*?)$/gm, '<h1>$1</h1>'],
-        [/\*\*([^*]+)\*\*/g, '<strong>$1</strong>'],
-        [/\*([^*]+)\*/g, '<em>$1</em>'],
-        [/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>'],
-        [/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">'],
-        [/`([^`]+)`/g, '<code>$1</code>'],
-        [/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>']
-      ];
-      
-      simpleReplacements.forEach(([regex, replacement]) => {
-        html = html.replace(regex, replacement);
-      });
-      
-      // 3. Listes (utiliser une approche plus simple)
-      html = html.replace(/^[-*]\s+(.+)$/gm, '<uli>$1</uli>');
-      html = html.replace(/(<uli>.*<\/uli>\s*)+/g, match => 
-        '<ul>' + match.replace(/<uli>/g, '<li>').replace(/<\/uli>/g, '</li>') + '</ul>'
-      );
-      
-      // 4. Paragraphes (seulement pour le texte non balisé)
-      html = html.split('\n\n').map(block => {
-        block = block.trim();
-        if (!block || block.startsWith('<')) return block;
-        return '<p>' + block + '</p>';
-      }).join('\n\n');
-      
-      // 5. Sauts de ligne
-      html = html.replace(/([^>])\n([^<])/g, '$1<br>$2');
-      
-      return html;
-    }
-    
-    function saveContent() {
-      // Synchroniser une seule fois si nécessaire
-      if (currentTab === 'visual') {
-        const html = document.getElementById('visualEditor').innerHTML;
-        document.getElementById('htmlEditor').value = html;
-      }
-      
-      const format = document.getElementById('saveFormat').value;
-      let content;
-      
-      if (format === 'markdown') {
-        const html = document.getElementById('htmlEditor').value;
-        content = htmlToMarkdown(html);
-      } else {
-        content = document.getElementById('htmlEditor').value;
-      }
-      
-      // Désactiver le bouton immédiatement
-      const saveButton = document.querySelector('.btn-primary');
-      saveButton.disabled = true;
-      
-      // Sauvegarder sans délai
-      google.script.run
-        .withSuccessHandler(function() {
-          // Fermer immédiatement
-          google.script.host.close();
-        })
-        .withFailureHandler(function(error) {
-          showError(error);
-          saveButton.disabled = false;
-        })
-        .saveCellContent(content, cellData.row, cellData.col);
-    }
-    
-    // Fonctions pour les tableaux
-    function checkTableFocus() {
-      const selection = window.getSelection();
-      const tableGroup = document.getElementById('tableTools');
-      
-      if (selection.rangeCount > 0) {
-        let node = selection.anchorNode;
-        let inTable = false;
-        
-        // Vérifier si on est dans un tableau
-        while (node && node !== document.getElementById('visualEditor')) {
-          if (node.nodeName === 'TABLE' || (node.parentElement && node.parentElement.nodeName === 'TABLE')) {
-            inTable = true;
-            break;
-          }
-          node = node.parentElement;
-        }
-        
-        // Activer/désactiver les boutons de tableau
-        if (inTable) {
-          tableGroup.classList.add('table-tools-active');
-          // Marquer le tableau actif
-          const table = getParentTable();
-          if (table) {
-            // Retirer la classe de tous les tableaux
-            document.querySelectorAll('#visualEditor table').forEach(t => {
-              t.classList.remove('table-selected');
-            });
-            table.classList.add('table-selected');
-          }
-        } else {
-          tableGroup.classList.remove('table-tools-active');
-          // Retirer la sélection de tous les tableaux
-          document.querySelectorAll('#visualEditor table').forEach(t => {
-            t.classList.remove('table-selected');
-          });
-        }
-      }
-    }
-
-    function handleSelectionChange() {
-      checkTableFocus();
-      updateToolbarState();
-    }
-
-    function updateToolbarState() {
-      const textPicker = document.getElementById('textColorPicker');
-      const bgPicker = document.getElementById('bgColorPicker');
-
-      // Obtenir l'élément de référence
-      const cells = getSelectedCells();
-      let refEl = cells.length ? cells[0] : getParentCell();
-      
-      if (!refEl) {
-        const sel = window.getSelection();
-        if (sel.rangeCount) {
-          refEl = sel.getRangeAt(0).startContainer;
-          if (refEl.nodeType === 3) refEl = refEl.parentElement;
-        }
-      }
-
-      if (refEl && refEl.nodeType === 1) {
-        const styles = window.getComputedStyle(refEl);
-        
-        // Mettre à jour le sélecteur de couleur du texte
-        if (textPicker) {
-          let textColor = styles.color;
-          // Convertir en hex
-          textPicker.value = rgbToHex(textColor);
-          updateColorIcon('textColorPicker');
-        }
-        
-        // Mettre à jour le sélecteur de couleur de fond
-        if (bgPicker) {
-          let bgColor = styles.backgroundColor;
-          // Si c'est transparent, utiliser blanc par défaut
-          if (bgColor === 'rgba(0, 0, 0, 0)' || bgColor === 'transparent') {
-            bgColor = 'rgb(255, 255, 255)';
-          }
-          bgPicker.value = rgbToHex(bgColor);
-          updateColorIcon('bgColorPicker');
-        }
-      }
-
-      // Mettre à jour l'état des boutons de formatage
-      const commands = {
-        'bold': 'bold',
-        'italic': 'italic', 
-        'underline': 'underline',
-        'insertUnorderedList': 'insertUnorderedList',
-        'insertOrderedList': 'insertOrderedList',
-        'justifyLeft': 'justifyLeft',
-        'justifyCenter': 'justifyCenter',
-        'justifyRight': 'justifyRight'
-      };
-      
-      Object.entries(commands).forEach(([cmd, queryCmd]) => {
-        const btns = document.querySelectorAll(`[onclick*="formatText('${cmd}')"]`);
-        btns.forEach(btn => {
-          try {
-            if (document.queryCommandState(queryCmd)) {
-              btn.classList.add('active');
-            } else {
-              btn.classList.remove('active');
-            }
-          } catch (e) {
-            btn.classList.remove('active');
-          }
-        });
-      });
-
-      // Mettre à jour les boutons de titre
-      try {
-        const format = document.queryCommandValue('formatBlock').toLowerCase();
-        document.querySelectorAll('.heading-btn').forEach(btn => {
-          const onclickAttr = btn.getAttribute('onclick');
-          if (onclickAttr) {
-            const match = onclickAttr.match(/'([^']+)'/g);
-            if (match && match.length >= 2) {
-              const tagName = match[1].replace(/'/g, '').toLowerCase();
-              if (tagName === format || (tagName === 'p' && (format === 'div' || format === ''))) {
-                btn.classList.add('active');
-              } else {
-                btn.classList.remove('active');
-              }
-            }
-          }
-        });
-      } catch (e) {
-        // Ignorer les erreurs
-      }
-
-      // Mettre à jour le sélecteur de police
-      const fontSelect = document.getElementById('fontSelect');
-      if (fontSelect && refEl) {
-        const styles = window.getComputedStyle(refEl);
-        let fontFamily = styles.fontFamily;
-        
-        // Nettoyer le nom de la police
-        fontFamily = fontFamily.replace(/['"]/g, '').split(',')[0].trim();
-        
-        // Vérifier si la police existe dans la liste
-        let fontFound = false;
-        for (let option of fontSelect.options) {
-          if (option.value.toLowerCase() === fontFamily.toLowerCase()) {
-            fontSelect.value = option.value;
-            fontFound = true;
-            break;
-          }
-        }
-        
-        // Si la police n'est pas trouvée, utiliser Arial par défaut
-        if (!fontFound) {
-          fontSelect.value = 'Arial';
-        }
-      }
-    }
-
-    function rgbToHex(color) {
-      if (!color) return '#000000';
-      
-      // Si c'est déjà en hexadécimal
-      if (color.startsWith('#')) {
-        return color.length === 7 ? color : '#000000';
-      }
-      
-      // Si c'est transparent
-      if (color === 'transparent' || color === 'rgba(0, 0, 0, 0)') {
-        return '#ffffff';
-      }
-      
-      // Extraire les valeurs RGB
-      const result = color.match(/\d+/g);
-      if (!result || result.length < 3) return '#000000';
-      
-      const r = parseInt(result[0]).toString(16).padStart(2, '0');
-      const g = parseInt(result[1]).toString(16).padStart(2, '0');
-      const b = parseInt(result[2]).toString(16).padStart(2, '0');
-      
-      return `#${r}${g}${b}`;
-    }
-
-    function updateTablePreview() {
-      const rows = parseInt(document.getElementById('tableRows').value) || 3;
-      const cols = parseInt(document.getElementById('tableCols').value) || 3;
-      const preview = document.getElementById('tablePreview');
-
-      let html = '<table style="width: 95.4045%; border-collapse: collapse; border: 2px solid #5B9BD5; text-align: center; border-radius: 8px; overflow: hidden;">';
-
-      // En-tête
-      html += '<tr style="background-color: #5B9BD5; color: white;">';
-      for (let j = 0; j < cols; j++) {
-        html += `<th style="border: 1px solid #5B9BD5; padding: 10px; resize: both; overflow: auto; border-radius: 4px;">En-tête ${j + 1}</th>`;
-      }
-      html += '</tr>';
-
-      // Corps
-      for (let i = 0; i < rows - 1; i++) {
-        html += '<tr>';
-        for (let j = 0; j < cols; j++) {
-          html += '<td style="border: 1px dotted #303030; padding: 15px; background-color: #f0f0f0; resize: both; overflow: auto; border-radius: 4px;">Cellule</td>';
-        }
-        html += '</tr>';
-      }
-
-      html += '</table>';
-      preview.innerHTML = html;
-    }
-
-    function showTableDialog() {
-      document.getElementById('tableDialog').style.display = 'block';
-      document.getElementById('tableRows').focus();
-      updateTablePreview(); // Afficher la prévisualisation initiale
-    }
-    
-    function hideTableDialog() {
-      document.getElementById('tableDialog').style.display = 'none';
-    }
-    
-    function insertTable() {
-      if (currentTab !== 'visual') {
-        alert('Veuillez passer en mode Éditeur Visuel pour insérer un tableau.');
-        return;
-      }
-      
-      // Sauvegarder l'état avant
-      saveState();
-      
-      const rows = parseInt(document.getElementById('tableRows').value) || 3;
-      const cols = parseInt(document.getElementById('tableCols').value) || 3;
-      
-      let html = '<table style="width: 95.4045%; border-collapse: collapse; border: 2px solid #5B9BD5; text-align: center; border-radius: 8px; overflow: hidden;">';
-      html += '<thead><tr style="background-color: #5B9BD5; color: white;">';
-      for (let j = 0; j < cols; j++) {
-        html += `<th contenteditable="true" style="border: 1px solid #5B9BD5; padding: 10px; resize: both; overflow: auto; border-radius: 4px;">En-tête ${j + 1}</th>`;
-      }
-      html += '</tr></thead><tbody>';
-      
-      for (let i = 0; i < rows - 1; i++) {
-        html += '<tr>';
-        for (let j = 0; j < cols; j++) {
-          html += '<td contenteditable="true" style="border: 1px dotted #303030; padding: 15px; background-color: #f0f0f0; resize: both; overflow: auto; border-radius: 4px;">Cellule</td>';
-        }
-        html += '</tr>';
-      }
-      html += '</tbody></table><p>&nbsp;</p>'; // Ajouter un espace après le tableau
-      
-      isExecutingCommand = true;
-      
-      // S'assurer que l'éditeur a le focus
-      document.getElementById('visualEditor').focus();
-      
-      // Insérer le tableau
-      document.execCommand('insertHTML', false, html);
-      hideTableDialog();
-      
-      // Mise à jour immédiate
-      isExecutingCommand = false;
-      saveState();
-      makeTableCellsEditable();
-      checkTableFocus();
-    }
-    
-    function getParentTable() {
-      const selection = window.getSelection();
-      if (selection.rangeCount > 0) {
-        let node = selection.anchorNode;
-        while (node && node.nodeName !== 'TABLE') {
-          node = node.parentElement;
-        }
-        return node;
-      }
-      return null;
-    }
-    
-    function getParentCell() {
-      const selection = window.getSelection();
-      if (selection.rangeCount > 0) {
-        let node = selection.anchorNode;
-        while (node && node.nodeName !== 'TD' && node.nodeName !== 'TH') {
-          node = node.parentElement;
-        }
-        return node;
-      }
-      return null;
-    }
-
-    function getSelectedCells() {
-      const selection = window.getSelection();
-      if (!selection.rangeCount) return [];
-      const range = selection.getRangeAt(0);
-      const allCells = Array.from(document.querySelectorAll('#visualEditor td, #visualEditor th'));
-      return allCells.filter(cell => range.intersectsNode(cell));
-    }
-
-    // Toutes les fonctions de manipulation de tableaux avec sauvegarde d'état améliorée
-    function addTableRow() {
-      if (currentTab !== 'visual') {
-        alert('Veuillez passer en mode Éditeur Visuel pour modifier le tableau.');
-        return;
-      }
-      
-      const cell = getParentCell();
-      if (!cell) {
-        alert('Veuillez cliquer dans une cellule du tableau pour ajouter une ligne.');
-        return;
-      }
-      
-      // Sauvegarder avant
-      saveState();
-      
-      isExecutingCommand = true;
-      const row = cell.parentElement;
-      const newRow = row.cloneNode(true);
-      
-      // Vider le contenu des cellules mais garder le style
-      const cells = newRow.querySelectorAll('td, th');
-      cells.forEach((cell, index) => {
-        if (cell.tagName === 'TH') {
-          // Convertir les th en td pour les nouvelles lignes
-          const newTd = document.createElement('td');
-          newTd.style.cssText = cell.style.cssText;
-          newTd.setAttribute('contenteditable', 'true');
-          newTd.textContent = 'Nouvelle cellule';
-          cell.parentNode.replaceChild(newTd, cell);
-        } else {
-          cell.textContent = 'Nouvelle cellule';
-        }
-      });
-      
-      // Ajouter après la ligne actuelle
-      row.parentNode.insertBefore(newRow, row.nextSibling);
-      
-      // Forcer la sauvegarde après
-      setTimeout(() => {
-        isExecutingCommand = false;
-        saveState();
-        makeTableCellsEditable();
-      }, 50);
-    }
-    
-    function addTableColumn() {
-      if (currentTab !== 'visual') {
-        alert('Veuillez passer en mode Éditeur Visuel pour modifier le tableau.');
-        return;
-      }
-      
-      const cell = getParentCell();
-      if (!cell) {
-        alert('Veuillez cliquer dans une cellule du tableau pour ajouter une colonne.');
-        return;
-      }
-      
-      saveState();
-      
-      isExecutingCommand = true;
-      const cellIndex = Array.from(cell.parentElement.children).indexOf(cell);
-      const table = getParentTable();
-      const rows = table.querySelectorAll('tr');
-      
-      rows.forEach((row, rowIndex) => {
-        const cells = row.children;
-        if (cellIndex < cells.length) {
-          const refCell = cells[cellIndex];
-          const newCell = refCell.cloneNode(true);
-          newCell.setAttribute('contenteditable', 'true');
-          
-          // Définir le contenu approprié
-          if (rowIndex === 0 && newCell.tagName === 'TH') {
-            newCell.textContent = `En-tête ${cells.length + 1}`;
-          } else {
-            newCell.textContent = 'Nouvelle cellule';
-          }
-          
-          // Insérer après la cellule actuelle
-          refCell.parentNode.insertBefore(newCell, refCell.nextSibling);
-        }
-      });
-      
-      setTimeout(() => {
-        isExecutingCommand = false;
-        saveState();
-        makeTableCellsEditable();
-      }, 50);
-    }
-    
-    function deleteTableRow() {
-      if (currentTab !== 'visual') {
-        alert('Veuillez passer en mode Éditeur Visuel pour modifier le tableau.');
-        return;
-      }
-      
-      const cell = getParentCell();
-      if (!cell) {
-        alert('Veuillez cliquer dans une cellule du tableau pour supprimer une ligne.');
-        return;
-      }
-      
-      const row = cell.parentElement;
-      const table = getParentTable();
-      const allRows = table.querySelectorAll('tr');
-      
-      // Ne pas supprimer s'il ne reste qu'une ligne de données (en plus de l'en-tête)
-      if (allRows.length <= 2) {
-        alert('Le tableau doit contenir au moins une ligne de données.');
-        return;
-      }
-      
-      // Ne pas supprimer la ligne d'en-tête
-      if (row.parentElement.tagName === 'THEAD') {
-        alert('Impossible de supprimer la ligne d\'en-tête.');
-        return;
-      }
-      
-      if (confirm('Êtes-vous sûr de vouloir supprimer cette ligne ?')) {
-        saveState();
-        isExecutingCommand = true;
-        row.remove();
-        isExecutingCommand = false;
-        saveState();
-      }
-    }
-    
-    function deleteTableColumn() {
-      if (currentTab !== 'visual') {
-        alert('Veuillez passer en mode Éditeur Visuel pour modifier le tableau.');
-        return;
-      }
-      
-      const cell = getParentCell();
-      if (!cell) {
-        alert('Veuillez cliquer dans une cellule du tableau pour supprimer une colonne.');
-        return;
-      }
-      
-      const cellIndex = Array.from(cell.parentElement.children).indexOf(cell);
-      const table = getParentTable();
-      const rows = table.querySelectorAll('tr');
-      
-      // Vérifier qu'il reste au moins une colonne
-      const firstRowCells = rows[0].children.length;
-      if (firstRowCells <= 1) {
-        alert('Le tableau doit contenir au moins une colonne.');
-        return;
-      }
-      
-      if (confirm('Êtes-vous sûr de vouloir supprimer cette colonne ?')) {
-        saveState();
-        isExecutingCommand = true;
-        
-        rows.forEach(row => {
-          const cells = row.children;
-          if (cellIndex < cells.length) {
-            cells[cellIndex].remove();
-          }
-        });
-        
-        isExecutingCommand = false;
-        saveState();
-      }
-    }
-    
-    function deleteTable() {
-      if (currentTab !== 'visual') {
-        alert('Veuillez passer en mode Éditeur Visuel pour supprimer le tableau.');
-        return;
-      }
-      
-      const table = getParentTable();
-      if (!table) {
-        alert('Veuillez cliquer dans un tableau pour le supprimer.');
-        return;
-      }
-      
-      if (confirm('Êtes-vous sûr de vouloir supprimer ce tableau ?')) {
-        saveState();
-        isExecutingCommand = true;
-        table.remove();
-        
-        // Mettre à jour l'état des boutons
-        isExecutingCommand = false;
-        saveState();
-        checkTableFocus();
-      }
-    }
+    let currentTab = 'visual';
   </script>
+  
+  <!-- Inclusion des scripts -->
+  <?!= include('utils') ?>
+  <?!= include('format-converter') ?>
+  <?!= include('table-manager') ?>
+  <?!= include('template-functions') ?>
+  <?!= include('toolbar') ?>
+  <?!= include('editor-main') ?>
 </body>
 </html>
