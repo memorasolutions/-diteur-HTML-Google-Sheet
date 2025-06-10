@@ -19,13 +19,18 @@ function editActiveCell() {
   const cell = sheet.getActiveCell();
   const value = cell.getValue();
   
-  if (!value || typeof value !== 'string') {
-    SpreadsheetApp.getUi().alert('La cellule active est vide ou ne contient pas de texte.');
+  if (typeof value !== 'string') {
+    SpreadsheetApp.getUi().alert('La cellule active ne contient pas de texte.');
+    return;
+  }
+
+  if (!value) {
+    openEditor(false, cell);
     return;
   }
   
   if (value.includes('<') && value.includes('>')) {
-    openEditor();
+    openEditor(false, cell);
   } else {
     // Proposer d'ouvrir même sans HTML
     const ui = SpreadsheetApp.getUi();
@@ -36,7 +41,7 @@ function editActiveCell() {
     );
     
     if (response == ui.Button.YES) {
-      openEditor();
+      openEditor(false, cell);
     }
   }
 }
@@ -56,16 +61,15 @@ function onSelectionChange(e) {
   
   // Vérifier si la cellule contient du HTML
   if (value.includes('<') && value.includes('>')) {
-    openEditor();
+    openEditor(false, range);
   }
 }
 
 /**
  * Ouvre l'éditeur HTML dans une boîte de dialogue ou sidebar
  */
-function openEditor(useDialog = false) {
-  const sheet = SpreadsheetApp.getActiveSheet();
-  const cell = sheet.getActiveCell();
+function openEditor(useDialog = false, cell) {
+  cell = cell || SpreadsheetApp.getActiveSheet().getActiveCell();
   const cellData = {
     content: cell.getValue() || '',
     row: cell.getRow(),
@@ -98,12 +102,12 @@ function editActiveCellDialog() {
   const cell = sheet.getActiveCell();
   const value = cell.getValue();
   
-  if (!value || typeof value !== 'string') {
-    SpreadsheetApp.getUi().alert('La cellule active est vide ou ne contient pas de texte.');
+  if (typeof value !== 'string') {
+    SpreadsheetApp.getUi().alert('La cellule active ne contient pas de texte.');
     return;
   }
   
-  openEditor(true); // Ouvre en mode dialogue
+  openEditor(true, cell); // Ouvre en mode dialogue
 }
 
 /**
