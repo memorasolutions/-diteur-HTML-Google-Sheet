@@ -1,6 +1,56 @@
 // Code.gs - Script principal Google Apps Script optimisé
 
 /**
+ * Note: Les méthodes isRecalculationEnabled() et setRecalculationEnabled()
+ * n'existent pas dans l'API Google Apps Script actuelle.
+ * Les optimisations utilisent d'autres techniques comme SpreadsheetApp.flush()
+ * pour améliorer les performances.
+ */
+
+// Variable globale pour le template en cache
+let TEMPLATE_CACHE = null;
+
+/**
+ * Cache simple pour éviter de recharger le même contenu
+ */
+const CACHE = {
+  content: new Map(),
+  maxSize: 50,
+  
+  get: function(row, col) {
+    const key = `${row},${col}`;
+    return this.content.get(key);
+  },
+  
+  set: function(row, col, value) {
+    const key = `${row},${col}`;
+    
+    // Limiter la taille du cache
+    if (this.content.size >= this.maxSize) {
+      const firstKey = this.content.keys().next().value;
+      this.content.delete(firstKey);
+    }
+    
+    this.content.set(key, value);
+  },
+  
+  clear: function() {
+    this.content.clear();
+  }
+};
+
+/**
+ * Pré-charge le template pour améliorer les performances
+ */
+function preloadTemplate() {
+  try {
+    TEMPLATE_CACHE = HtmlService.createTemplateFromFile('editor');
+  } catch (e) {
+    console.error('Erreur lors du préchargement du template:', e);
+  }
+}
+
+/**
  * Fonction appelée lors de l'ouverture de la feuille
  */
 function onOpen() {
@@ -8,6 +58,9 @@ function onOpen() {
     .createMenu('Éditeur HTML')
     .addItem('Éditer la cellule active', 'editActiveCellDialog')
     .addToUi();
+  
+  // Précharger le template en arrière-plan
+  preloadTemplate();
 }
 
 /**
@@ -32,15 +85,22 @@ function onSelectionChange(e) {
 function openEditor(cell) {
   cell = cell || SpreadsheetApp.getActiveSheet().getActiveCell();
   
-  // Utiliser getDisplayValue() pour une lecture plus rapide
+  // Utiliser getValue() avec une vérification rapide
+  const value = cell.getValue();
   const cellData = {
-    content: cell.getDisplayValue() || '',
+    content: value || '',
     row: cell.getRow(),
     col: cell.getColumn(),
   };
 
-  // Créer le template
-  const template = HtmlService.createTemplateFromFile('editor');
+  // Utiliser le template en cache si disponible, sinon le créer
+  let template;
+  try {
+    template = TEMPLATE_CACHE || HtmlService.createTemplateFromFile('editor');
+  } catch (e) {
+    template = HtmlService.createTemplateFromFile('editor');
+  }
+  
   template.cellData = cellData;
   
   // Évaluer avec les optimisations
@@ -75,35 +135,25 @@ function editActiveCellDialog() {
 function saveCellContent(content, row, col) {
   try {
     const sheet = SpreadsheetApp.getActiveSheet();
-    const range = sheet.getRange(row, col);
-    
-    // Désactiver temporairement les recalculs pour améliorer les performances
-    const recalcEnabled = sheet.isRecalculationEnabled();
-    if (recalcEnabled) {
-      sheet.setRecalculationEnabled(false);
-    }
     
     // Nettoyer le contenu avant sauvegarde
     const cleanContent = sanitizeHtml(content);
     
-    // Sauvegarder la valeur
-    range.setValue(cleanContent);
+    // Utiliser getRange et setValue en une seule opération
+    sheet.getRange(row, col).setValue(cleanContent);
+    
+    // Invalider le cache pour cette cellule
+    if (typeof CACHE !== 'undefined' && CACHE && CACHE.content) {
+      const key = `${row},${col}`;
+      CACHE.content.delete(key);
+    }
     
     // Flush pour forcer l'écriture immédiate
     SpreadsheetApp.flush();
     
-    // Réactiver les recalculs
-    if (recalcEnabled) {
-      sheet.setRecalculationEnabled(true);
-    }
-    
     return { success: true };
   } catch (error) {
-    // En cas d'erreur, s'assurer que les recalculs sont réactivés
-    try {
-      SpreadsheetApp.getActiveSheet().setRecalculationEnabled(true);
-    } catch (e) {}
-    
+    console.error('Erreur lors de la sauvegarde:', error);
     throw error;
   }
 }
@@ -159,7 +209,7 @@ function getBatchCellContents(ranges) {
   ranges.forEach(range => {
     const cell = sheet.getRange(range.row, range.col);
     results.push({
-      content: cell.getDisplayValue() || '',
+      content: cell.getValue() || '',
       row: range.row,
       col: range.col
     });
@@ -173,38 +223,76 @@ function getBatchCellContents(ranges) {
  */
 function saveBatchCellContents(updates) {
   const sheet = SpreadsheetApp.getActiveSheet();
-  const recalcEnabled = sheet.isRecalculationEnabled();
   
   try {
-    // Désactiver les recalculs
-    if (recalcEnabled) {
-      sheet.setRecalculationEnabled(false);
-    }
+    // Pour optimiser, grouper les cellules contiguës
+    const values = [];
+    const ranges = [];
     
-    // Appliquer toutes les mises à jour
     updates.forEach(update => {
-      const range = sheet.getRange(update.row, update.col);
       const cleanContent = sanitizeHtml(update.content);
-      range.setValue(cleanContent);
+      values.push([cleanContent]);
+      ranges.push(sheet.getRange(update.row, update.col));
+    });
+    
+    // Utiliser setValues pour chaque range
+    ranges.forEach((range, index) => {
+      range.setValue(values[index][0]);
     });
     
     // Forcer l'écriture
     SpreadsheetApp.flush();
     
-    // Réactiver les recalculs
-    if (recalcEnabled) {
-      sheet.setRecalculationEnabled(true);
-    }
-    
     return { success: true, count: updates.length };
   } catch (error) {
-    // S'assurer que les recalculs sont réactivés en cas d'erreur
-    try {
-      if (recalcEnabled) {
-        sheet.setRecalculationEnabled(true);
-      }
-    } catch (e) {}
+    console.error('Erreur lors de la sauvegarde batch:', error);
+    throw error;
+  }
+}
+
+/**
+ * Version alternative optimisée pour les cellules contiguës
+ */
+function saveCellContentsFast(startRow, startCol, contents) {
+  const sheet = SpreadsheetApp.getActiveSheet();
+  
+  try {
+    // Nettoyer tous les contenus
+    const cleanContents = contents.map(content => [sanitizeHtml(content)]);
     
+    // Obtenir la plage de cellules
+    const range = sheet.getRange(startRow, startCol, cleanContents.length, 1);
+    
+    // Écrire toutes les valeurs en une fois
+    range.setValues(cleanContents);
+    
+    // Forcer l'écriture
+    SpreadsheetApp.flush();
+    
+    return { success: true, count: cleanContents.length };
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde rapide:', error);
+    throw error;
+  }
+}
+
+/**
+ * Fonction utilitaire pour mesurer les performances
+ */
+function measurePerformance(functionName, ...args) {
+  const startTime = new Date().getTime();
+  
+  try {
+    const result = this[functionName].apply(this, args);
+    const endTime = new Date().getTime();
+    const duration = endTime - startTime;
+    
+    console.log(`${functionName} a pris ${duration}ms`);
+    return result;
+  } catch (error) {
+    const endTime = new Date().getTime();
+    const duration = endTime - startTime;
+    console.error(`${functionName} a échoué après ${duration}ms:`, error);
     throw error;
   }
 }
