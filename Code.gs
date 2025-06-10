@@ -50,8 +50,6 @@ function editActiveCell() {
  * Fonction appelée lors de la sélection d'une cellule
  */
 function onSelectionChange(e) {
-  const isActive = PropertiesService.getUserProperties().getProperty('editorActive');
-  if (isActive !== 'true') return;
   
   const range = e.range;
   if (!range || range.getNumColumns() !== 1 || range.getNumRows() !== 1) return;
