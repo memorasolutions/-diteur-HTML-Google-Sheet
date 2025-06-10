@@ -171,7 +171,23 @@
       font-size: 14px;
     }
 
+    .color-picker {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .color-picker .color-icon {
+      position: absolute;
+      pointer-events: none;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
     .toolbar input[type="color"],
+    .color-picker input[type="color"],
     .toolbar select.font-select {
       width: 36px;
       height: 36px;
@@ -284,7 +300,7 @@
     }
 
     #visualEditor table th {
-      background: #F9FAFB;
+      background: rgba(79, 70, 229, 0.05);
       font-weight: 600;
     }
 
@@ -841,8 +857,14 @@
           <div class="separator"></div>
 
           <div class="toolbar-group">
-            <input type="color" id="textColorPicker" data-tooltip="Couleur du texte">
-            <input type="color" id="bgColorPicker" data-tooltip="Couleur de fond">
+            <label class="color-picker" data-tooltip="Couleur du texte">
+              <span class="color-icon">A</span>
+              <input type="color" id="textColorPicker">
+            </label>
+            <label class="color-picker" data-tooltip="Couleur de fond">
+              <span class="color-icon">▇</span>
+              <input type="color" id="bgColorPicker">
+            </label>
             <select id="fontSelect" class="font-select" data-tooltip="Police">
               <option value="Arial">Arial</option>
               <option value="Times New Roman">Times</option>
@@ -1600,10 +1622,10 @@
       const rows = parseInt(document.getElementById('tableRows').value) || 3;
       const cols = parseInt(document.getElementById('tableCols').value) || 3;
       
-      let html = '<table style="width: 95.4045%; border-collapse: collapse; border: 2px solid #6ea6cf; text-align: center; border-radius: 8px; overflow: hidden;">';
-      html += '<thead><tr style="background-color: #6ea6cf; color: white;">';
+      let html = '<table style="width: 95.4045%; border-collapse: collapse; border: 2px solid var(--border-color); text-align: center; border-radius: 8px; overflow: hidden;">';
+      html += '<thead><tr style="background-color: rgba(79, 70, 229, 0.05);">';
       for (let j = 0; j < cols; j++) {
-        html += `<th contenteditable="true" style="border: 1px solid #6ea6cf; padding: 10px; resize: both; overflow: auto; border-radius: 4px;">En-tête ${j + 1}</th>`;
+        html += `<th contenteditable="true" style="border: 1px solid var(--border-color); padding: 10px; resize: both; overflow: auto; border-radius: 4px;">En-tête ${j + 1}</th>`;
       }
       html += '</tr></thead><tbody>';
       
