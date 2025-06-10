@@ -1080,8 +1080,20 @@
       document.getElementById('visualEditor').addEventListener('click', checkTableFocus);
       document.getElementById('visualEditor').addEventListener('keyup', checkTableFocus);
 
-      document.getElementById('textColorPicker').addEventListener('input', e => setTextColor(e.target.value));
-      document.getElementById('bgColorPicker').addEventListener('input', e => setCellBackground(e.target.value));
+      const textPicker = document.getElementById('textColorPicker');
+      const bgPicker = document.getElementById('bgColorPicker');
+
+      textPicker.addEventListener('input', e => {
+        setTextColor(e.target.value);
+        updateColorIcon('textColorPicker');
+      });
+      bgPicker.addEventListener('input', e => {
+        setCellBackground(e.target.value);
+        updateColorIcon('bgColorPicker');
+      });
+
+      updateColorIcon('textColorPicker');
+      updateColorIcon('bgColorPicker');
       document.getElementById('fontSelect').addEventListener('change', e => setFont(e.target.value));
     };
     
@@ -1325,16 +1337,30 @@
     }
 
     function setCellBackground(color) {
-      const cell = getParentCell();
-      if (cell) {
+      const cells = getSelectedCells();
+      const targets = cells.length ? cells : [getParentCell()].filter(Boolean);
+      if (targets.length) {
         saveState();
-        cell.style.backgroundColor = color;
+        targets.forEach(c => c.style.backgroundColor = color);
         saveState();
       }
     }
 
     function setFont(font) {
       formatText('fontName', font);
+    }
+
+    function updateColorIcon(pickerId) {
+      const input = document.getElementById(pickerId);
+      if (!input) return;
+      const icon = input.previousElementSibling;
+      if (!icon) return;
+      const color = input.value;
+      const r = parseInt(color.substr(1, 2), 16);
+      const g = parseInt(color.substr(3, 2), 16);
+      const b = parseInt(color.substr(5, 2), 16);
+      const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+      icon.style.color = brightness > 128 ? '#000' : '#fff';
     }
 
     function htmlToMarkdown(html) {
@@ -1622,10 +1648,10 @@
       const rows = parseInt(document.getElementById('tableRows').value) || 3;
       const cols = parseInt(document.getElementById('tableCols').value) || 3;
       
-      let html = '<table style="width: 95.4045%; border-collapse: collapse; border: 2px solid var(--border-color); text-align: center; border-radius: 8px; overflow: hidden;">';
-      html += '<thead><tr style="background-color: rgba(79, 70, 229, 0.05);">';
+      let html = '<table style="width: 95.4045%; border-collapse: collapse; border: 2px solid #6ea6cf; text-align: center; border-radius: 8px; overflow: hidden;">';
+      html += '<thead><tr style="background-color: #6ea6cf; color: white;">';
       for (let j = 0; j < cols; j++) {
-        html += `<th contenteditable="true" style="border: 1px solid var(--border-color); padding: 10px; resize: both; overflow: auto; border-radius: 4px;">En-tête ${j + 1}</th>`;
+        html += `<th contenteditable="true" style="border: 1px solid #6ea6cf; padding: 10px; resize: both; overflow: auto; border-radius: 4px;">En-tête ${j + 1}</th>`;
       }
       html += '</tr></thead><tbody>';
       
@@ -1677,7 +1703,15 @@
       }
       return null;
     }
-    
+
+    function getSelectedCells() {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return [];
+      const range = selection.getRangeAt(0);
+      const allCells = Array.from(document.querySelectorAll('#visualEditor td, #visualEditor th'));
+      return allCells.filter(cell => range.intersectsNode(cell));
+    }
+
     // Toutes les fonctions de manipulation de tableaux avec sauvegarde d'état améliorée
     function addTableRow() {
       if (currentTab !== 'visual') {
