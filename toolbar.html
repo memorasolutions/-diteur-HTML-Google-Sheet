@@ -113,10 +113,6 @@ function initializeColorPickers() {
       updateColorDisplay('bgColorPicker', e.target.value);
     }
   });
-
-  // Initialisation des affichages de couleur
-  updateColorDisplay('textColorPicker', textPicker.value);
-  updateColorDisplay('bgColorPicker', bgPicker.value);
 }
 
 /**
@@ -129,39 +125,10 @@ function updateColorDisplay(pickerId, color) {
     display.style.backgroundColor = color;
   }
   
-  // Mettre à jour la couleur de l'icône
+  // Les icônes restent toujours foncées
   const icon = picker.querySelector('.color-icon');
   if (icon) {
-    // Calculer la luminosité de la couleur
-    let r, g, b;
-    if (color.startsWith('#')) {
-      r = parseInt(color.substr(1, 2), 16);
-      g = parseInt(color.substr(3, 2), 16);
-      b = parseInt(color.substr(5, 2), 16);
-    } else if (color.startsWith('rgb')) {
-      const matches = color.match(/\d+/g);
-      if (matches && matches.length >= 3) {
-        r = parseInt(matches[0]);
-        g = parseInt(matches[1]);
-        b = parseInt(matches[2]);
-      } else {
-        r = g = b = 255; // Blanc par défaut
-      }
-    } else {
-      // Couleur par défaut si non valide
-      r = g = b = 255;
-    }
-    
-    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-    
-    // Pour le color picker de fond, toujours garder l'icône visible
-    if (pickerId === 'bgColorPicker') {
-      // L'icône a déjà un contour blanc grâce au text-shadow
-      icon.style.color = brightness > 200 ? '#374151' : '#FFFFFF';
-    } else {
-      // Pour le texte, ajuster selon la luminosité
-      icon.style.color = brightness > 128 ? '#374151' : '#FFFFFF';
-    }
+    icon.style.color = '#374151'; // Couleur foncée fixe
   }
 }
 
@@ -364,20 +331,122 @@ function updateToolbarState() {
 }
 
 /**
+ * Système de tooltips simplifié et fonctionnel
+ */
+function initializeTooltips() {
+  let currentTooltip = null;
+  let tooltipTimeout = null;
+  
+  // Fonction pour créer un tooltip
+  function createTooltip(element) {
+    let text = element.getAttribute('data-tooltip');
+    if (!text) return;
+    
+    // Pour les boutons de tableau, vérifier s'ils sont désactivés
+    if (element.classList.contains('table-action-btn') && 
+        !element.closest('.table-tools-active')) {
+      text = 'Cliquez dans un tableau pour activer';
+    }
+    
+    const tooltip = document.createElement('div');
+    tooltip.className = 'tooltip-wrapper';
+    tooltip.innerHTML = `
+      <div class="tooltip-inner">
+        ${text}
+        <div class="tooltip-arrow"></div>
+      </div>
+    `;
+    
+    document.body.appendChild(tooltip);
+    
+    // Positionner le tooltip
+    const rect = element.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    
+    // Calculer la position
+    let left = rect.left + rect.width / 2 - tooltipRect.width / 2;
+    let top = rect.top - tooltipRect.height - 10;
+    
+    // Ajuster si sort de l'écran
+    if (left < 5) left = 5;
+    if (left + tooltipRect.width > window.innerWidth - 5) {
+      left = window.innerWidth - tooltipRect.width - 5;
+    }
+    
+    // Si trop haut, afficher en bas
+    if (top < 5) {
+      top = rect.bottom + 10;
+      tooltip.querySelector('.tooltip-arrow').style.cssText = `
+        top: -5px;
+        bottom: auto;
+        border-top: none;
+        border-bottom: 5px solid #1F2937;
+      `;
+    }
+    
+    tooltip.style.left = left + 'px';
+    tooltip.style.top = top + 'px';
+    
+    // Afficher avec délai
+    setTimeout(() => {
+      tooltip.classList.add('show');
+    }, 10);
+    
+    return tooltip;
+  }
+  
+  // Gérer les événements
+  document.addEventListener('mouseenter', (e) => {
+    const target = e.target.closest('[data-tooltip]');
+    if (!target) return;
+    
+    // Annuler tout timeout précédent
+    clearTimeout(tooltipTimeout);
+    
+    // Supprimer l'ancien tooltip
+    if (currentTooltip) {
+      currentTooltip.remove();
+      currentTooltip = null;
+    }
+    
+    // Créer le nouveau après un délai
+    tooltipTimeout = setTimeout(() => {
+      currentTooltip = createTooltip(target);
+    }, 500);
+  }, true);
+  
+  document.addEventListener('mouseleave', (e) => {
+    const target = e.target.closest('[data-tooltip]');
+    if (!target) return;
+    
+    clearTimeout(tooltipTimeout);
+    
+    if (currentTooltip) {
+      currentTooltip.classList.remove('show');
+      setTimeout(() => {
+        if (currentTooltip) {
+          currentTooltip.remove();
+          currentTooltip = null;
+        }
+      }, 200);
+    }
+  }, true);
+  
+  // Nettoyer au scroll
+  document.addEventListener('scroll', () => {
+    clearTimeout(tooltipTimeout);
+    if (currentTooltip) {
+      currentTooltip.remove();
+      currentTooltip = null;
+    }
+  }, true);
+}
+
+/**
  * Tooltip étendu pour les boutons désactivés
  */
 document.addEventListener('DOMContentLoaded', () => {
-  // Ajouter des tooltips dynamiques pour les boutons de tableau désactivés
-  const tableActionBtns = document.querySelectorAll('.table-action-btn');
-  tableActionBtns.forEach(btn => {
-    const originalTooltip = btn.getAttribute('data-tooltip');
-    btn.addEventListener('mouseenter', () => {
-      if (!btn.parentElement.classList.contains('table-tools-active')) {
-        btn.setAttribute('data-tooltip', 'Cliquez dans un tableau pour activer');
-      } else {
-        btn.setAttribute('data-tooltip', originalTooltip);
-      }
-    });
-  });
+  // Initialiser le système de tooltips
+  initializeTooltips();
 });
 </script>
