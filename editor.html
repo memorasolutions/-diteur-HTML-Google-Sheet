@@ -98,7 +98,7 @@
           <!-- Groupe de couleurs et police -->
           <div class="toolbar-group">
             <label class="color-picker" data-tooltip="Couleur du texte">
-              <span class="color-icon">A</span>
+              <span class="color-icon" style="color: #374151;">A</span>
               <input type="color" id="textColorPicker" value="#000000">
               <div class="color-display"></div>
             </label>
@@ -142,17 +142,20 @@
             <button onclick="showTableDialog()" data-tooltip="Insérer un tableau">
               <i class="fas fa-table"></i>
             </button>
+            <button onclick="showTableStyleDialog()" data-tooltip="Style du tableau" class="table-action-btn">
+              <i class="fas fa-palette"></i>
+            </button>
             <button onclick="addTableRow()" data-tooltip="Ajouter une ligne" class="table-action-btn">
-              <i class="fas fa-plus-square"></i> <i class="fas fa-arrows-alt-v"></i>
+              <i class="fas fa-plus"></i><i class="fas fa-grip-lines" style="font-size: 10px; margin-left: 2px;"></i>
             </button>
             <button onclick="addTableColumn()" data-tooltip="Ajouter une colonne" class="table-action-btn">
-              <i class="fas fa-plus-square"></i> <i class="fas fa-arrows-alt-h"></i>
+              <i class="fas fa-plus"></i><i class="fas fa-grip-lines-vertical" style="font-size: 10px; margin-left: 2px;"></i>
             </button>
             <button onclick="deleteTableRow()" data-tooltip="Supprimer la ligne" class="table-action-btn">
-              <i class="fas fa-minus-square"></i> <i class="fas fa-arrows-alt-v"></i>
+              <i class="fas fa-minus"></i><i class="fas fa-grip-lines" style="font-size: 10px; margin-left: 2px;"></i>
             </button>
             <button onclick="deleteTableColumn()" data-tooltip="Supprimer la colonne" class="table-action-btn">
-              <i class="fas fa-minus-square"></i> <i class="fas fa-arrows-alt-h"></i>
+              <i class="fas fa-minus"></i><i class="fas fa-grip-lines-vertical" style="font-size: 10px; margin-left: 2px;"></i>
             </button>
             <button onclick="deleteTable()" data-tooltip="Supprimer le tableau" class="table-action-btn">
               <i class="fas fa-trash-alt"></i>
@@ -200,6 +203,24 @@
               <i class="fas fa-redo"></i>
             </button>
           </div>
+
+          <div class="separator"></div>
+
+          <!-- Groupe d'outils avancés -->
+          <div class="toolbar-group">
+            <button onclick="insertHorizontalRule()" data-tooltip="Ligne horizontale">
+              <i class="fas fa-minus"></i>
+            </button>
+            <button onclick="insertCodeBlock()" data-tooltip="Bloc de code">
+              <i class="fas fa-code"></i>
+            </button>
+            <button onclick="insertQuote()" data-tooltip="Citation">
+              <i class="fas fa-quote-right"></i>
+            </button>
+            <button onclick="clearFormatting()" data-tooltip="Effacer le formatage">
+              <i class="fas fa-eraser"></i>
+            </button>
+          </div>
         </div>
       </div>
       
@@ -226,12 +247,20 @@
           <i class="fas fa-times"></i>
           Annuler
         </button>
+        <div class="editor-stats">
+          <span id="wordCount">0 mots</span>
+          <span class="separator">•</span>
+          <span id="charCount">0 caractères</span>
+        </div>
         <div class="save-format">
-          <label for="saveFormat">Format de sauvegarde :</label>
+          <label for="saveFormat">Format :</label>
           <select id="saveFormat">
             <option value="html">HTML</option>
             <option value="markdown">Markdown</option>
           </select>
+          <button class="btn btn-secondary" onclick="exportContent()" title="Exporter">
+            <i class="fas fa-download"></i>
+          </button>
         </div>
       </div>
       
@@ -289,6 +318,31 @@
             <input type="checkbox" id="tableBorders" checked onchange="updateTablePreview()">
             Bordures visibles
           </label>
+        </div>
+        <div class="table-corner-options">
+          <label>Arrondissement des coins :</label>
+          <div class="corner-controls">
+            <label class="corner-checkbox">
+              <input type="checkbox" id="cornerTopLeft" checked onchange="updateTablePreview()">
+              <span>↖</span> Haut gauche
+            </label>
+            <label class="corner-checkbox">
+              <input type="checkbox" id="cornerTopRight" checked onchange="updateTablePreview()">
+              <span>↗</span> Haut droit
+            </label>
+            <label class="corner-checkbox">
+              <input type="checkbox" id="cornerBottomLeft" checked onchange="updateTablePreview()">
+              <span>↙</span> Bas gauche
+            </label>
+            <label class="corner-checkbox">
+              <input type="checkbox" id="cornerBottomRight" checked onchange="updateTablePreview()">
+              <span>↘</span> Bas droit
+            </label>
+            <div class="radius-slider">
+              <label for="cornerRadius">Rayon : <span id="radiusValue">8</span>px</label>
+              <input type="range" id="cornerRadius" min="0" max="20" value="8" oninput="updateTablePreview(); document.getElementById('radiusValue').textContent = this.value;">
+            </div>
+          </div>
         </div>
         <div class="table-preview" id="tablePreview">
           <!-- La prévisualisation sera générée ici -->
@@ -348,6 +402,121 @@
         <button class="btn btn-secondary" onclick="hideSaveTemplateDialog()">Annuler</button>
         <button class="btn btn-primary" onclick="confirmSaveTemplate()">
           <i class="fas fa-save"></i> Sauvegarder
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Boîte de dialogue pour le style du tableau -->
+  <div id="tableStyleDialog" class="dialog-overlay" style="display: none;">
+    <div class="dialog-backdrop" onclick="hideTableStyleDialog()"></div>
+    <div class="dialog-container table-style-dialog">
+      <div class="dialog-header">
+        <h3><i class="fas fa-palette"></i> Style du tableau</h3>
+        <button class="dialog-close" onclick="hideTableStyleDialog()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="dialog-body">
+        <!-- Arrondissement des coins -->
+        <div class="style-section">
+          <h4><i class="fas fa-border-style"></i> Arrondissement des coins</h4>
+          <div class="corner-controls">
+            <label class="corner-checkbox">
+              <input type="checkbox" id="styleCornerTopLeft" checked onchange="updateTableStyle()">
+              <span>↖</span> Haut gauche
+            </label>
+            <label class="corner-checkbox">
+              <input type="checkbox" id="styleCornerTopRight" checked onchange="updateTableStyle()">
+              <span>↗</span> Haut droit
+            </label>
+            <label class="corner-checkbox">
+              <input type="checkbox" id="styleCornerBottomLeft" checked onchange="updateTableStyle()">
+              <span>↙</span> Bas gauche
+            </label>
+            <label class="corner-checkbox">
+              <input type="checkbox" id="styleCornerBottomRight" checked onchange="updateTableStyle()">
+              <span>↘</span> Bas droit
+            </label>
+            <div class="radius-slider">
+              <label for="styleCornerRadius">Rayon : <span id="styleRadiusValue">8</span>px</label>
+              <input type="range" id="styleCornerRadius" min="0" max="30" value="8" oninput="updateTableStyle(); document.getElementById('styleRadiusValue').textContent = this.value;">
+            </div>
+          </div>
+        </div>
+        
+        <!-- Couleurs -->
+        <div class="style-section">
+          <h4><i class="fas fa-paint-brush"></i> Couleurs</h4>
+          <div class="color-options">
+            <div class="color-option">
+              <label>Couleur d'en-tête</label>
+              <input type="color" id="headerColor" value="#5B9BD5" onchange="updateTableStyle()">
+            </div>
+            <div class="color-option">
+              <label>Texte d'en-tête</label>
+              <input type="color" id="headerTextColor" value="#ffffff" onchange="updateTableStyle()">
+            </div>
+            <div class="color-option">
+              <label>Bordures</label>
+              <input type="color" id="borderColor" value="#dddddd" onchange="updateTableStyle()">
+            </div>
+          </div>
+          
+          <label class="checkbox-option">
+            <input type="checkbox" id="alternateRows" onchange="updateTableStyle()">
+            <span>Lignes alternées</span>
+          </label>
+          
+          <div class="color-option" id="alternateColorOption" style="display: none;">
+            <label>Couleur alternée</label>
+            <input type="color" id="alternateColor" value="#f8f9fa" onchange="updateTableStyle()">
+          </div>
+        </div>
+        
+        <!-- Bordures -->
+        <div class="style-section">
+          <h4><i class="fas fa-border-all"></i> Bordures</h4>
+          <div class="border-options">
+            <label>
+              <input type="radio" name="borderStyle" value="all" checked onchange="updateTableStyle()">
+              Toutes les bordures
+            </label>
+            <label>
+              <input type="radio" name="borderStyle" value="horizontal" onchange="updateTableStyle()">
+              Lignes horizontales
+            </label>
+            <label>
+              <input type="radio" name="borderStyle" value="none" onchange="updateTableStyle()">
+              Sans bordures
+            </label>
+          </div>
+          <div class="border-width-slider">
+            <label for="borderWidth">Épaisseur : <span id="borderWidthValue">1</span>px</label>
+            <input type="range" id="borderWidth" min="1" max="5" value="1" oninput="updateTableStyle(); document.getElementById('borderWidthValue').textContent = this.value;">
+          </div>
+        </div>
+        
+        <!-- Alignement -->
+        <div class="style-section">
+          <h4><i class="fas fa-align-center"></i> Alignement du contenu</h4>
+          <div class="align-options">
+            <button class="align-btn" onclick="setTableAlignment('left')" data-tooltip="Aligner à gauche">
+              <i class="fas fa-align-left"></i>
+            </button>
+            <button class="align-btn" onclick="setTableAlignment('center')" data-tooltip="Centrer">
+              <i class="fas fa-align-center"></i>
+            </button>
+            <button class="align-btn" onclick="setTableAlignment('right')" data-tooltip="Aligner à droite">
+              <i class="fas fa-align-right"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="dialog-footer">
+        <button class="btn btn-secondary" onclick="hideTableStyleDialog()">Fermer</button>
+        <button class="btn btn-primary" onclick="applyTableStyle()">
+          <i class="fas fa-check"></i> Appliquer
         </button>
       </div>
     </div>
