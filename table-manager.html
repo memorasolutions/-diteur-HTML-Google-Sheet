@@ -27,25 +27,34 @@ function initializeTableResizers() {
     // Nettoyer les anciens redimensionneurs
     table.querySelectorAll('.table-col-resizer, .table-row-resizer').forEach(r => r.remove());
     
-    // Ajouter des redimensionneurs de colonnes
-    const firstRow = table.querySelector('tr');
-    if (firstRow) {
-      const cells = firstRow.querySelectorAll('td, th');
-      cells.forEach((cell, index) => {
-        if (index < cells.length - 1) { // Pas sur la dernière colonne
-          const resizer = createColumnResizer(table, index);
+    // Obtenir toutes les lignes
+    const rows = table.querySelectorAll('tr');
+    if (rows.length === 0) return;
+    
+    // Trouver le nombre maximum de colonnes
+    let maxCols = 0;
+    rows.forEach(row => {
+      const cellCount = row.querySelectorAll('td, th').length;
+      if (cellCount > maxCols) maxCols = cellCount;
+    });
+    
+    // Ajouter des redimensionneurs de colonnes sur chaque cellule
+    rows.forEach(row => {
+      const cells = row.querySelectorAll('td, th');
+      cells.forEach((cell, colIndex) => {
+        if (colIndex < maxCols - 1) { // Pas sur la dernière colonne
+          const resizer = createColumnResizer(table, colIndex);
           cell.appendChild(resizer);
         }
       });
-    }
+    });
     
     // Ajouter des redimensionneurs de lignes
-    const rows = table.querySelectorAll('tr');
-    rows.forEach((row, index) => {
-      if (index < rows.length - 1) { // Pas sur la dernière ligne
+    rows.forEach((row, rowIndex) => {
+      if (rowIndex < rows.length - 1) { // Pas sur la dernière ligne
         const firstCell = row.querySelector('td, th');
         if (firstCell) {
-          const resizer = createRowResizer(table, index);
+          const resizer = createRowResizer(table, rowIndex);
           firstCell.appendChild(resizer);
         }
       }
@@ -59,35 +68,58 @@ function initializeTableResizers() {
 function createColumnResizer(table, colIndex) {
   const resizer = document.createElement('div');
   resizer.className = 'table-col-resizer';
+  resizer.setAttribute('data-col-index', colIndex);
   
   let startX = 0;
-  let startWidth = 0;
-  let currentCol = null;
+  let startWidths = [];
   
   resizer.addEventListener('mousedown', (e) => {
     e.preventDefault();
     e.stopPropagation();
     
     startX = e.clientX;
+    
+    // Obtenir toutes les cellules de cette colonne
     const cells = table.querySelectorAll(`tr td:nth-child(${colIndex + 1}), tr th:nth-child(${colIndex + 1})`);
-    currentCol = cells[0];
-    startWidth = currentCol.offsetWidth;
+    startWidths = Array.from(cells).map(cell => cell.offsetWidth);
     
     resizer.classList.add('resizing');
     document.body.style.cursor = 'col-resize';
     
+    // Créer une ligne guide visuelle
+    const guide = document.createElement('div');
+    guide.className = 'resize-guide';
+    guide.style.cssText = `
+      position: fixed;
+      top: ${table.getBoundingClientRect().top}px;
+      height: ${table.offsetHeight}px;
+      width: 2px;
+      background: var(--primary-color);
+      opacity: 0.5;
+      z-index: 10000;
+      pointer-events: none;
+    `;
+    document.body.appendChild(guide);
+    
     const handleMouseMove = (e) => {
       const diff = e.clientX - startX;
-      const newWidth = Math.max(60, startWidth + diff); // Min width 60px
+      const newWidth = Math.max(60, startWidths[0] + diff);
       
-      cells.forEach(cell => {
+      // Mettre à jour la position du guide
+      guide.style.left = e.clientX + 'px';
+      
+      // Appliquer la largeur à toutes les cellules de la colonne
+      cells.forEach((cell, index) => {
         cell.style.width = newWidth + 'px';
+        cell.style.minWidth = newWidth + 'px';
+        cell.style.maxWidth = newWidth + 'px';
       });
     };
     
     const handleMouseUp = () => {
       resizer.classList.remove('resizing');
       document.body.style.cursor = '';
+      guide.remove();
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       
@@ -277,9 +309,23 @@ function updateTablePreview() {
   const cols = parseInt(document.getElementById('tableCols').value) || 3;
   const hasHeaders = document.getElementById('tableHeaders').checked;
   const hasBorders = document.getElementById('tableBorders').checked;
+  
+  // Options d'arrondissement
+  const topLeft = document.getElementById('cornerTopLeft').checked;
+  const topRight = document.getElementById('cornerTopRight').checked;
+  const bottomLeft = document.getElementById('cornerBottomLeft').checked;
+  const bottomRight = document.getElementById('cornerBottomRight').checked;
+  const radius = document.getElementById('cornerRadius').value + 'px';
+  
   const preview = document.getElementById('tablePreview');
 
-  let html = '<table style="width: 100%; border-collapse: collapse;">';
+  // Construire le style d'arrondissement
+  let borderRadius = '';
+  if (topLeft || topRight || bottomLeft || bottomRight) {
+    borderRadius = `border-radius: ${topLeft ? radius : '0'} ${topRight ? radius : '0'} ${bottomRight ? radius : '0'} ${bottomLeft ? radius : '0'};`;
+  }
+
+  let html = `<table style="width: 100%; border-collapse: collapse; ${borderRadius} overflow: hidden;">`;
 
   // En-tête si demandé
   if (hasHeaders) {
@@ -333,7 +379,192 @@ function updateTablePreview() {
 function showTableDialog() {
   document.getElementById('tableDialog').style.display = 'flex';
   document.getElementById('tableRows').focus();
+  
+  // Réinitialiser les valeurs par défaut
+  document.getElementById('tableRows').value = 3;
+  document.getElementById('tableCols').value = 3;
+  document.getElementById('tableHeaders').checked = true;
+  document.getElementById('tableBorders').checked = true;
+  document.getElementById('cornerTopLeft').checked = true;
+  document.getElementById('cornerTopRight').checked = true;
+  document.getElementById('cornerBottomLeft').checked = true;
+  document.getElementById('cornerBottomRight').checked = true;
+  document.getElementById('cornerRadius').value = 8;
+  document.getElementById('radiusValue').textContent = '8';
+  
   updateTablePreview();
+}
+
+/**
+ * Affiche la boîte de dialogue de style du tableau
+ */
+function showTableStyleDialog() {
+  const table = getParentTable();
+  if (!table) {
+    alert('Veuillez sélectionner un tableau');
+    return;
+  }
+  
+  // Lire les styles actuels du tableau
+  const styles = window.getComputedStyle(table);
+  
+  // Extraire les valeurs de border-radius
+  const borderRadius = styles.borderRadius || '0px';
+  const radiusValue = parseInt(borderRadius) || 0;
+  document.getElementById('styleCornerRadius').value = radiusValue;
+  document.getElementById('styleRadiusValue').textContent = radiusValue;
+  
+  // Vérifier quels coins sont arrondis
+  const topLeftRadius = styles.borderTopLeftRadius || '0px';
+  const topRightRadius = styles.borderTopRightRadius || '0px';
+  const bottomLeftRadius = styles.borderBottomLeftRadius || '0px';
+  const bottomRightRadius = styles.borderBottomRightRadius || '0px';
+  
+  document.getElementById('styleCornerTopLeft').checked = parseInt(topLeftRadius) > 0;
+  document.getElementById('styleCornerTopRight').checked = parseInt(topRightRadius) > 0;
+  document.getElementById('styleCornerBottomLeft').checked = parseInt(bottomLeftRadius) > 0;
+  document.getElementById('styleCornerBottomRight').checked = parseInt(bottomRightRadius) > 0;
+  
+  // Couleurs
+  const headerCells = table.querySelectorAll('th');
+  if (headerCells.length > 0) {
+    const headerStyles = window.getComputedStyle(headerCells[0]);
+    document.getElementById('headerColor').value = rgbToHex(headerStyles.backgroundColor);
+    document.getElementById('headerTextColor').value = rgbToHex(headerStyles.color);
+  }
+  
+  // Bordures
+  const firstCell = table.querySelector('td, th');
+  if (firstCell) {
+    const cellStyles = window.getComputedStyle(firstCell);
+    document.getElementById('borderColor').value = rgbToHex(cellStyles.borderColor);
+    document.getElementById('borderWidth').value = parseInt(cellStyles.borderWidth) || 1;
+    document.getElementById('borderWidthValue').textContent = parseInt(cellStyles.borderWidth) || 1;
+  }
+  
+  // Vérifier les lignes alternées
+  const evenRows = table.querySelectorAll('tbody tr:nth-child(even)');
+  const hasAlternate = evenRows.length > 0 && evenRows[0].style.backgroundColor;
+  document.getElementById('alternateRows').checked = hasAlternate;
+  document.getElementById('alternateColorOption').style.display = hasAlternate ? 'block' : 'none';
+  
+  document.getElementById('tableStyleDialog').style.display = 'flex';
+}
+
+/**
+ * Cache la boîte de dialogue de style
+ */
+function hideTableStyleDialog() {
+  document.getElementById('tableStyleDialog').style.display = 'none';
+}
+
+/**
+ * Met à jour l'aperçu du style
+ */
+function updateTableStyle() {
+  const alternateRows = document.getElementById('alternateRows').checked;
+  document.getElementById('alternateColorOption').style.display = alternateRows ? 'block' : 'none';
+}
+
+/**
+ * Applique le style au tableau
+ */
+function applyTableStyle() {
+  const table = getParentTable();
+  if (!table) return;
+  
+  saveState();
+  
+  // Arrondissement des coins
+  const topLeft = document.getElementById('styleCornerTopLeft').checked;
+  const topRight = document.getElementById('styleCornerTopRight').checked;
+  const bottomLeft = document.getElementById('styleCornerBottomLeft').checked;
+  const bottomRight = document.getElementById('styleCornerBottomRight').checked;
+  const radius = document.getElementById('styleCornerRadius').value + 'px';
+  
+  if (topLeft || topRight || bottomLeft || bottomRight) {
+    table.style.borderRadius = `${topLeft ? radius : '0'} ${topRight ? radius : '0'} ${bottomRight ? radius : '0'} ${bottomLeft ? radius : '0'}`;
+    table.style.overflow = 'hidden';
+  } else {
+    table.style.borderRadius = '';
+    table.style.overflow = '';
+  }
+  
+  // Couleurs d'en-tête
+  const headerColor = document.getElementById('headerColor').value;
+  const headerTextColor = document.getElementById('headerTextColor').value;
+  const headers = table.querySelectorAll('th');
+  headers.forEach(th => {
+    th.style.backgroundColor = headerColor;
+    th.style.color = headerTextColor;
+  });
+  
+  // Bordures
+  const borderColor = document.getElementById('borderColor').value;
+  const borderWidth = document.getElementById('borderWidth').value + 'px';
+  const borderStyle = document.querySelector('input[name="borderStyle"]:checked').value;
+  
+  table.style.borderColor = borderColor;
+  table.style.borderWidth = borderWidth;
+  
+  const cells = table.querySelectorAll('td, th');
+  cells.forEach(cell => {
+    if (borderStyle === 'all') {
+      cell.style.border = `${borderWidth} solid ${borderColor}`;
+    } else if (borderStyle === 'horizontal') {
+      cell.style.border = 'none';
+      cell.style.borderBottom = `${borderWidth} solid ${borderColor}`;
+    } else {
+      cell.style.border = 'none';
+    }
+  });
+  
+  // Lignes alternées
+  const alternateRows = document.getElementById('alternateRows').checked;
+  const alternateColor = document.getElementById('alternateColor').value;
+  
+  if (alternateRows) {
+    table.classList.add('alternate-rows');
+    // Ajouter un style personnalisé pour la couleur alternée si différente de la valeur par défaut
+    if (alternateColor !== '#f8f9fa') {
+      const styleId = 'alternate-rows-style';
+      let styleEl = document.getElementById(styleId);
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = styleId;
+        document.head.appendChild(styleEl);
+      }
+      styleEl.textContent = `
+        #visualEditor table.alternate-rows tbody tr:nth-child(even) {
+          background-color: ${alternateColor} !important;
+        }
+      `;
+    }
+  } else {
+    table.classList.remove('alternate-rows');
+  }
+  
+  saveState();
+  hideTableStyleDialog();
+}
+
+/**
+ * Définit l'alignement du contenu du tableau
+ */
+function setTableAlignment(align) {
+  const table = getParentTable();
+  if (!table) return;
+  
+  const cells = table.querySelectorAll('td, th');
+  cells.forEach(cell => {
+    cell.style.textAlign = align;
+  });
+  
+  // Mettre à jour les boutons actifs
+  document.querySelectorAll('.align-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  event.target.closest('.align-btn').classList.add('active');
 }
 
 /**
@@ -359,7 +590,23 @@ function insertTable() {
   const hasHeaders = document.getElementById('tableHeaders').checked;
   const hasBorders = document.getElementById('tableBorders').checked;
   
+  // Options d'arrondissement
+  const topLeft = document.getElementById('cornerTopLeft').checked;
+  const topRight = document.getElementById('cornerTopRight').checked;
+  const bottomLeft = document.getElementById('cornerBottomLeft').checked;
+  const bottomRight = document.getElementById('cornerBottomRight').checked;
+  const radius = document.getElementById('cornerRadius').value + 'px';
+  
+  // Construire le style d'arrondissement
+  let borderRadius = '';
+  if (topLeft || topRight || bottomLeft || bottomRight) {
+    borderRadius = `border-radius: ${topLeft ? radius : '0'} ${topRight ? radius : '0'} ${bottomRight ? radius : '0'} ${bottomLeft ? radius : '0'};`;
+  }
+  
   let html = '<table style="width: 100%; border-collapse: collapse;';
+  if (borderRadius) {
+    html += ' ' + borderRadius + ' overflow: hidden;';
+  }
   if (hasBorders) {
     html += ' border: 2px solid #5B9BD5;';
   }
