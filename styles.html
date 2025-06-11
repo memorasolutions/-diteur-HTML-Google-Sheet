@@ -38,7 +38,6 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  overflow: hidden;
   position: relative;
   background: white;
 }
@@ -46,11 +45,12 @@ body {
 /* Toolbar Container */
 .toolbar-container {
   position: sticky;
-  top: 0;
-  z-index: 100;
+  top: 20px;
+  z-index: 1000;
   background: var(--toolbar-bg);
   box-shadow: var(--toolbar-shadow);
   border-bottom: 1px solid var(--border-color);
+  overflow: visible;
 }
 
 /* Tabs */
@@ -121,6 +121,7 @@ body {
   background: #F9FAFB;
   border: 1px solid transparent;
   transition: all 0.2s ease;
+  overflow: visible;
 }
 
 .toolbar-group:hover {
@@ -142,6 +143,7 @@ body {
   cursor: pointer;
   transition: all 0.2s ease;
   color: var(--text-secondary);
+  overflow: visible;
 }
 
 .toolbar button:hover {
@@ -183,7 +185,7 @@ body {
   height: 36px;
   cursor: pointer;
   border-radius: 6px;
-  overflow: hidden;
+  overflow: visible;
   transition: all 0.2s ease;
   border: 1px solid var(--border-color);
   background: white;
@@ -200,15 +202,8 @@ body {
   pointer-events: none;
   font-size: 16px;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #374151 !important;
   z-index: 2;
-  text-shadow: 
-    -1px -1px 0 rgba(255, 255, 255, 0.8),
-    1px -1px 0 rgba(255, 255, 255, 0.8),
-    -1px 1px 0 rgba(255, 255, 255, 0.8),
-    1px 1px 0 rgba(255, 255, 255, 0.8),
-    0 0 3px rgba(0, 0, 0, 0.3);
-  mix-blend-mode: normal;
 }
 
 .color-picker .color-display {
@@ -220,6 +215,7 @@ body {
   border-radius: 2px;
   background: currentColor;
   z-index: 1;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
 }
 
 .color-picker input[type="color"] {
@@ -239,6 +235,7 @@ body {
 
 /* Select styles */
 .toolbar select {
+  position: relative;
   height: 36px;
   padding: 0 12px;
   margin: 0;
@@ -249,6 +246,7 @@ body {
   font-size: 14px;
   color: var(--text-primary);
   transition: all 0.2s ease;
+  overflow: visible;
 }
 
 .toolbar select:hover {
@@ -276,53 +274,46 @@ body {
   margin: 0 8px;
 }
 
-/* Tooltip */
-.toolbar button::before,
-.color-picker::before,
-.toolbar select::before {
-  content: attr(data-tooltip);
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%) scale(0.8);
+/* Tooltip - Simplifié */
+[data-tooltip] {
+  position: relative;
+}
+
+.tooltip-wrapper {
+  position: fixed;
+  z-index: 999999;
+  pointer-events: none;
+}
+
+.tooltip-inner {
   background: #1F2937;
   color: white;
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 12px;
+  font-weight: normal;
   white-space: nowrap;
-  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-8px);
   opacity: 0;
   transition: all 0.2s ease;
-  margin-bottom: 8px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
 }
 
-.toolbar button::after,
-.color-picker::after,
-.toolbar select::after {
-  content: '';
+.tooltip-wrapper.show .tooltip-inner {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.tooltip-arrow {
   position: absolute;
-  bottom: 100%;
+  bottom: -5px;
   left: 50%;
   transform: translateX(-50%);
-  border: 6px solid transparent;
-  border-top-color: #1F2937;
-  opacity: 0;
-  transition: all 0.2s ease;
-  margin-bottom: 2px;
-  z-index: 1000;
-}
-
-.toolbar button:hover::before,
-.toolbar button:hover::after,
-.color-picker:hover::before,
-.color-picker:hover::after,
-.toolbar select:hover::before,
-.toolbar select:hover::after {
-  opacity: 1;
-  transform: translateX(-50%) scale(1);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #1F2937;
 }
 
 /* Editor Content */
@@ -381,6 +372,15 @@ body {
   font-weight: 600;
 }
 
+/* Lignes alternées */
+#visualEditor table.alternate-rows tbody tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
+
+#visualEditor table.alternate-rows tbody tr:nth-child(even):hover {
+  background-color: rgba(79, 70, 229, 0.1);
+}
+
 /* Table hover effects */
 #visualEditor table td:hover,
 #visualEditor table th:hover {
@@ -407,6 +407,7 @@ body {
   cursor: col-resize;
   background: transparent;
   z-index: 10;
+  transition: background 0.2s ease;
 }
 
 .table-col-resizer:hover,
@@ -424,12 +425,18 @@ body {
   cursor: row-resize;
   background: transparent;
   z-index: 10;
+  transition: background 0.2s ease;
 }
 
 .table-row-resizer:hover,
 .table-row-resizer.resizing {
   background: var(--primary-color);
   opacity: 0.5;
+}
+
+/* Guide de redimensionnement */
+.resize-guide {
+  transition: none !important;
 }
 
 /* Table action buttons disabled state */
@@ -561,6 +568,132 @@ body {
   width: 500px;
 }
 
+/* Table style dialog */
+.table-style-dialog {
+  width: 600px;
+  max-height: 80vh;
+}
+
+.style-section {
+  margin-bottom: 24px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.style-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.style-section h4 {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.style-section h4 i {
+  color: var(--primary-color);
+  font-size: 14px;
+}
+
+.color-options {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.color-option {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.color-option label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.color-option input[type="color"] {
+  width: 100%;
+  height: 36px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.checkbox-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+
+.checkbox-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.checkbox-option span {
+  font-size: 14px;
+}
+
+.border-options {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.border-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.border-width-slider {
+  margin-top: 12px;
+}
+
+.align-options {
+  display: flex;
+  gap: 8px;
+}
+
+.align-btn {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border-color);
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.align-btn:hover {
+  background: var(--primary-light);
+  border-color: var(--primary-color);
+}
+
+.align-btn.active {
+  background: var(--primary-color);
+  color: white;
+  border-color: var(--primary-color);
+}
+
 .input-row {
   display: flex;
   gap: 20px;
@@ -606,6 +739,77 @@ body {
   gap: 8px;
   margin-bottom: 8px;
   cursor: pointer;
+}
+
+.table-corner-options {
+  margin-bottom: 20px;
+  padding: 16px;
+  background: #F9FAFB;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.table-corner-options > label {
+  display: block;
+  font-weight: 500;
+  margin-bottom: 12px;
+  color: var(--text-secondary);
+}
+
+.corner-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.corner-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.corner-checkbox span {
+  font-size: 16px;
+  font-weight: bold;
+  color: var(--primary-color);
+}
+
+.radius-slider {
+  grid-column: 1 / -1;
+}
+
+.radius-slider label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.radius-slider input[type="range"] {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border-color);
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.radius-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--primary-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.radius-slider input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 4px var(--primary-light);
 }
 
 .table-preview {
@@ -719,10 +923,27 @@ body {
 }
 
 .save-format {
-  margin-left: auto;
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.save-format button {
+  padding: 8px 12px;
+}
+
+.editor-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  margin-left: auto;
+  margin-right: 16px;
+}
+
+.editor-stats .separator {
+  opacity: 0.5;
 }
 
 .save-format label {
