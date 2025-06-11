@@ -269,50 +269,6 @@ function confirmSaveTemplate() {
     .saveTemplate(name, content, description);
 }
 
-/**
- * Affiche une notification
- */
-function showNotification(message, type = 'info') {
-  const colors = {
-    success: { bg: '#D1FAE5', text: '#065F46', icon: 'check-circle' },
-    error: { bg: '#FEE2E2', text: '#991B1B', icon: 'exclamation-circle' },
-    info: { bg: '#DBEAFE', text: '#1E40AF', icon: 'info-circle' },
-    warning: { bg: '#FEF3C7', text: '#92400E', icon: 'exclamation-triangle' }
-  };
-  
-  const color = colors[type] || colors.info;
-  
-  const notification = createElement('div', {
-    style: `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: ${color.bg};
-      color: ${color.text};
-      padding: 12px 20px;
-      border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      z-index: 10000;
-      max-width: 400px;
-      animation: slideIn 0.3s ease;
-    `
-  }, [
-    createElement('div', {
-      style: 'display: flex; align-items: center; gap: 10px;'
-    }, [
-      createElement('i', { class: `fas fa-${color.icon}` }),
-      createElement('span', {}, [message])
-    ])
-  ]);
-  
-  document.body.appendChild(notification);
-  
-  setTimeout(() => {
-    notification.style.animation = 'slideOut 0.3s ease';
-    setTimeout(() => notification.remove(), 300);
-  }, 3000);
-}
-
 // Ajouter les event listeners pour les touches Enter
 document.addEventListener('DOMContentLoaded', () => {
   const templateNameInput = document.getElementById('templateName');
