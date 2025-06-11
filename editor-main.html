@@ -34,12 +34,14 @@ window.onload = function() {
     if (currentTab === 'visual') {
       syncContent();
       handleSelectionChange();
+      updateStats();
     }
   });
   
   code.addEventListener('input', () => {
     if (currentTab === 'html') {
       syncContent();
+      updateStats();
     }
   });
 
@@ -48,8 +50,6 @@ window.onload = function() {
   
   // Forcer l'initialisation des couleurs après un court délai
   setTimeout(() => {
-    updateColorDisplay('textColorPicker', '#000000');
-    updateColorDisplay('bgColorPicker', '#ffffff');
     updateToolbarState();
   }, 100);
   
@@ -86,6 +86,36 @@ function handleKeyPress(e) {
   else if ((e.ctrlKey || e.metaKey) && e.key === 's') {
     e.preventDefault();
     saveContent();
+  }
+  // Ctrl/Cmd + B pour gras
+  else if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+    e.preventDefault();
+    formatText('bold');
+  }
+  // Ctrl/Cmd + I pour italique
+  else if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
+    e.preventDefault();
+    formatText('italic');
+  }
+  // Ctrl/Cmd + U pour souligné
+  else if ((e.ctrlKey || e.metaKey) && e.key === 'u') {
+    e.preventDefault();
+    formatText('underline');
+  }
+  // Ctrl/Cmd + K pour lien
+  else if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    formatText('createLink');
+  }
+  // Ctrl/Cmd + Shift + C pour code
+  else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
+    e.preventDefault();
+    insertCodeBlock();
+  }
+  // Ctrl/Cmd + Shift + Q pour citation
+  else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'Q') {
+    e.preventDefault();
+    insertQuote();
   }
 }
 
@@ -210,10 +240,11 @@ function loadContent(data) {
     initializeObserver();
     document.getElementById('visualEditor').focus();
     
-    // Mettre à jour l'état initial de la toolbar
+    // Mettre à jour l'état initial de la toolbar et les stats
     setTimeout(() => {
       handleSelectionChange();
       updateToolbarState();
+      updateStats();
     }, 100);
   });
 }
@@ -310,6 +341,7 @@ function switchTab(tab, event) {
     setTimeout(() => {
       handleSelectionChange();
       updateToolbarState();
+      updateStats();
     }, 50);
   }
   
@@ -320,6 +352,7 @@ function switchTab(tab, event) {
       // Si le HTML n'est pas formaté, le formater
       document.getElementById('htmlEditor').value = formatHtml(currentHtml);
     }
+    updateStats();
   }
 }
 
@@ -422,6 +455,208 @@ function insertImage() {
     isExecutingCommand = false;
     saveState();
   }
+}
+
+// Fonction pour insérer une ligne horizontale
+function insertHorizontalRule() {
+  saveState();
+  isExecutingCommand = true;
+  document.execCommand('insertHorizontalRule', false, null);
+  isExecutingCommand = false;
+  saveState();
+}
+
+// Fonction pour insérer un bloc de code
+function insertCodeBlock() {
+  const code = prompt('Entrez votre code:');
+  if (code) {
+    saveState();
+    isExecutingCommand = true;
+    const codeHtml = `<pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto;"><code>${escapeHtml(code)}</code></pre><p>&nbsp;</p>`;
+    document.execCommand('insertHTML', false, codeHtml);
+    isExecutingCommand = false;
+    saveState();
+  }
+}
+
+// Fonction pour insérer une citation
+function insertQuote() {
+  const quote = prompt('Entrez votre citation:');
+  if (quote) {
+    const author = prompt('Auteur (optionnel):');
+    saveState();
+    isExecutingCommand = true;
+    let quoteHtml = `<blockquote style="border-left: 4px solid #4F46E5; padding-left: 16px; margin: 16px 0; color: #6B7280; font-style: italic;">`;
+    quoteHtml += escapeHtml(quote);
+    if (author) {
+      quoteHtml += `<br><small style="font-style: normal;">— ${escapeHtml(author)}</small>`;
+    }
+    quoteHtml += `</blockquote><p>&nbsp;</p>`;
+    document.execCommand('insertHTML', false, quoteHtml);
+    isExecutingCommand = false;
+    saveState();
+  }
+}
+
+// Fonction pour effacer le formatage
+function clearFormatting() {
+  saveState();
+  isExecutingCommand = true;
+  document.execCommand('removeFormat', false, null);
+  isExecutingCommand = false;
+  saveState();
+}
+
+// Fonction utilitaire pour échapper le HTML
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Fonction pour mettre à jour les statistiques
+function updateStats() {
+  const editor = document.getElementById('visualEditor');
+  
+  // Extraire tout le texte, y compris des tableaux
+  let text = '';
+  
+  // Fonction récursive pour extraire le texte
+  function extractText(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      text += node.textContent;
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      // Ajouter un espace après les éléments de bloc
+      const blockElements = ['P', 'DIV', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'TD', 'TH', 'BR'];
+      
+      for (let child of node.childNodes) {
+        extractText(child);
+      }
+      
+      if (blockElements.includes(node.tagName)) {
+        text += ' ';
+      }
+    }
+  }
+  
+  extractText(editor);
+  
+  // Nettoyer le texte
+  text = text.replace(/\s+/g, ' ').trim();
+  
+  // Compter les mots
+  let wordCount = 0;
+  if (text.length > 0) {
+    // Diviser par espaces et filtrer les mots vides
+    const words = text.split(' ').filter(word => {
+      // Un mot doit avoir au moins un caractère alphanumérique
+      return word.length > 0 && /[\w\u00C0-\u024F\u1E00-\u1EFF]/.test(word);
+    });
+    wordCount = words.length;
+  }
+  
+  // Compter les caractères (incluant les espaces)
+  const charCount = text.length;
+  
+  // Mettre à jour l'affichage
+  document.getElementById('wordCount').textContent = `${wordCount} mot${wordCount !== 1 ? 's' : ''}`;
+  document.getElementById('charCount').textContent = `${charCount} caractère${charCount !== 1 ? 's' : ''}`;
+}
+
+// Fonction pour exporter le contenu
+function exportContent() {
+  const format = document.getElementById('saveFormat').value;
+  let content;
+  let filename;
+  let mimeType;
+  
+  if (format === 'markdown') {
+    const html = document.getElementById('htmlEditor').value;
+    content = htmlToMarkdown(html);
+    filename = 'document.md';
+    mimeType = 'text/markdown';
+  } else {
+    // Pour HTML, créer un document complet
+    const htmlContent = document.getElementById('htmlEditor').value;
+    content = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document exporté</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        th { background-color: #5B9BD5; color: white; }
+        blockquote { border-left: 4px solid #4F46E5; padding-left: 16px; margin: 16px 0; color: #6B7280; font-style: italic; }
+        pre { background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        code { background: #f5f5f5; padding: 2px 4px; border-radius: 2px; }
+    </style>
+</head>
+<body>
+${htmlContent}
+</body>
+</html>`;
+    filename = 'document.html';
+    mimeType = 'text/html';
+  }
+  
+  // Créer un blob et télécharger
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  // Afficher un message de succès
+  showNotification('Document exporté avec succès', 'success');
+}
+
+// Fonction pour afficher une notification
+function showNotification(message, type = 'info') {
+  const colors = {
+    success: { bg: '#D1FAE5', text: '#065F46', icon: 'check-circle' },
+    error: { bg: '#FEE2E2', text: '#991B1B', icon: 'exclamation-circle' },
+    info: { bg: '#DBEAFE', text: '#1E40AF', icon: 'info-circle' },
+    warning: { bg: '#FEF3C7', text: '#92400E', icon: 'exclamation-triangle' }
+  };
+  
+  const color = colors[type] || colors.info;
+  
+  const notification = document.createElement('div');
+  notification.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: ${color.bg};
+    color: ${color.text};
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 10000;
+    max-width: 400px;
+    animation: slideIn 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  `;
+  
+  notification.innerHTML = `
+    <i class="fas fa-${color.icon}"></i>
+    <span>${message}</span>
+  `;
+  
+  document.body.appendChild(notification);
+  
+  setTimeout(() => {
+    notification.style.animation = 'slideOut 0.3s ease';
+    setTimeout(() => notification.remove(), 300);
+  }, 3000);
 }
 
 // Styles pour les animations
